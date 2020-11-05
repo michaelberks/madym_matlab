@@ -1,15 +1,18 @@
-function [S0_map] = fit_S0_map(T1_map, FA_vols, FAs, TR, varargin)
-%COMPUTE_T1_MAP fit T1 map to set of variable flip angle volumes
-%   [T1_map] = compute_T1_map(FA_vols, FAs, varargin)
+function [S0_map] = compute_M0_from_T1(T1_map, FA_vols, FAs, TR)
+%COMPUTE_M0_FROM_T1 given T1 and a set of variable flip angle volumes,
+%reverse engineer M0 (useful in cases where M0 wasn't saved when T1 was
+%estimated)
+%   [T1_map] = compute_M0_from_T1(T1_map, FA_vols, FAs, TR)
 %
 % Inputs:
+%      T1_map - T1 map
+%
 %      FA_vols - Flip angle volumes stacked along 4th dimension
 %
 %      FAs - vector contining flip angle associated with each volume
 %      (length(FAs) must equal size(FA_vols,4)
 %
-%      varargin - *Insert description of input variable here*
-%
+%      TR - reptition time
 %
 % Outputs:
 %      T1_map
