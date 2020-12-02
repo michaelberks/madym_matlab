@@ -21,11 +21,11 @@ function [version] = local_madym_version(cmd_exe)
 % Phone : +44 (0)161 275 7669 
 % Copyright: (C) University of Manchester 
 if ~exist('cmd_exe', 'var') || isempty(cmd_exe)
-    cmd_exe = [local_madym_root(false) 'madym_lite'];
+    cmd_exe = [local_madym_root(false) 'madym_DCE'];
 end
 
 v_file = tempname;
-status = system([cmd_exe ' -version > ' v_file]);
+status = system([cmd_exe ' -v > ' v_file]);
 
 if status
     version = [];

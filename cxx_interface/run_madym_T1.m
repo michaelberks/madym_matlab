@@ -71,7 +71,7 @@ args = u_packargs(varargin, 0, ...
   	'output_name', 'madym_analysis.dat', ... Name of output file
     'noise_thresh', 100, ... PD noise threshold
     'roi_name', [],...Path to ROI map
-    'error_name', 'error_codes',... Name of error codes image
+    'error_name', [],... Name of error codes image
     'overwrite', 0,...Set overwrite existing analysis in output dir ON
     'dummy_run', 0 ...Don't run any thing, just print the cmd we'll run to inspect
     );
@@ -229,10 +229,14 @@ else
     if nargout
         T1Path = [args.output_dir 'T1.hdr'];
         M0Path = [args.output_dir 'M0.hdr'];
-        errorPath = [args.output_dir args.error_name, '.hdr'];
+        errorPath = [args.output_dir 'error_tracker.hdr'];
         T1 = load_img_volume(T1Path);
         M0 = load_img_volume(M0Path);
-        errorCodes = load_img_volume(errorPath);
+        try
+            errorCodes = load_img_volume(errorPath);
+        catch
+            errorCodes = [];
+        end
     end
     if deleteOutput
         delete([args.output_dir 'T1.hdr']);
