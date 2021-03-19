@@ -71,52 +71,17 @@ function [model_params, model_fit, iauc, error_codes, model_conc, dyn_conc] =...
 %
 % Notes:
 %   Tracer-kinetic models:
-%
+% 
 %   All models available in the main MaDym and MaDym-Lite C++ tools are
 %   available to fit. Currently these are:
 % 
-%   "ETM"
-%   Extended-Tofts model. Requires single input AIF. 
-%   Outputs 4 params (= initial values for optimisation):
-%   {Ktrans=0.2, Ve=0.2, Vp=0.2, tau_a=0.0*} *Arterial offset delay
-%   To run a standard Tofts model, set Vp = 0 by using options 
-%   'fixed_params', [3], 'fixed_values', [0.0],...
+%   See the madym_cxx project wiki for more details:
+% https://gitlab.com/manchester_qbi/manchester_qbi_public/madym_cxx/-/wikis/dce_models
 % 
-%   "DIETM"
-%   Extended-Tofts model with dual-input supply. Requires both AIF and PIF.
-%   Outputs 6 parameters:
-%   {Ktrans=0.2, Ve=0.2, Vp=0.2, fa=0.5, tau_a=0.0, tau_v=0.0*} *Venous delay 
+%   Run: system([local_madym_root 'madym_DCE_lite --help']); to see full set of
+%   input options to C++ tool
 % 
-%   "GADOXETATE"
-%   Leo's model for gaodxetate contrast in the liver. Requires both AIF and PIF.
-%   Outputs 7 parameters:
-%   {Fp=0.6, ve=0.2, ki=0.2, kef=0.1, fa=0.5, tau_a=0.025, tau_v=0}
-%
-%   "MATERNE"
-%   Dual-input single compartment model
-%   {Fp=0.6, fa=0.5, k2=1.0, tau_a=0.025, tau_v=0}
-% 
-%   "2CXM"
-%   2-compartment exchange model. Single AIF input.
-%   Outputs 5 parameters:
-%   { Fp=0.6, PS=0.2, v_e=0.2, v_p=0.2, tau_a=0}
-% 
-%   "DI2CXM"
-%   {Fp=0.6, PS=0.2, v_e=0.2, v_p=0.2, fa0.5, tau_a=0, tau_v=0 }
-% 
-%   "DIIRF"
-%   Dual-input, bi-exponential model that fits the functional form of the
-%   IRF directly, and can be reduced to any of the (DI)2CXM, GADOXETATE, 
-%   MATERNE or TM (but not ETM) models through appropriate fixing of 
-%   parameters. See DI-IRF notes on Matlab repository wiki for further
-%   explanation, and see functions TWO_CXM_PARAMS_MODEL_TO_PHYS and
-%   ACTIVE_PARAMS_MODEL_TO_PHYS for converting the DIRRF outputs into 
-%   physiologically meaningful parameters.
-%   Outputs 7 parameters: 
-%   {Fpos=0.2, Fneg=0.2, Kpos=0.5, Kneg=4.0, fa=0.5, tau_a=0.025, tau_v=0}
-%
-% See also: RUN_MADYM, TWO_CXM_MODEL, GADOXETATE_MODEL, MATERNE_MODEL,
-% EXTENDED_TOFTS_MODEL, TWO_CXM_PARAMS_MODEL_TO_PHYS, ACTIVE_PARAMS_MODEL_TO_PHYS
+% See also: RUN_MADYM, TRUN_MADYM_T1
 %
 % Created: 20-Feb-2019
 % Author: Michael Berks 
@@ -139,6 +104,7 @@ args = u_packargs(varargin, 0, ...
     'output_Ct_sig', nargout > 5,... Flag requesting concentration (derived from signal) are saved to output
     'output_Ct_mod', nargout > 4, ...Flag requesting modelled concentration maps are saved to output
     'no_optimise', 0, ...Flag to switch off optimising, will just fit initial parameters values for model
+    'B1_correction', false, ... Apply B1 correction
 ... The below are all only required if we're converting from signals
     'T1', [], ...Baseline T1 values (in ms)
     'S0', [], ...Baseline S0 values, required if not using ratio method
@@ -164,7 +130,10 @@ args = u_packargs(varargin, 0, ...
     'relative_limit_values', [], ..._values for relative bounds, sets lower/upper bound as init param -/+ relative limit
 ...
     'dyn_noise_values', [],...Varying temporal noise in model fit
-  	'test_enhancement', false, ...Set test-for-enhancement flag
+  	'max_iter', NaN,... Maximum number of iterations in model fit
+    'test_enhancement', false, ...Set test-for-enhancement flag
+    'quiet', false,... Suppress output to stdout
+    'working_directory', '',...Sets the current working directory for the system call, allows setting relative input paths for data
     'dummy_run', false ...Don't run any thing, just print the cmd we'll run to inspect
     );
 clear varargin;
@@ -227,6 +196,11 @@ cmd = sprintf(...
     args.output_dir,...
     args.output_name);
 
+%Set the working dir
+if ~isempty(args.working_directory)
+    cmd = sprintf('%s --cwd %s', cmd, args.working_directory);
+end
+
 %Now set any args that require option inputs
 if args.input_Ct
     cmd = sprintf('%s --Ct', cmd);
@@ -281,8 +255,20 @@ if args.no_optimise
     cmd = sprintf('%s --no_opt', cmd);
 end
 
+if args.B1_correction
+    cmd = sprintf('%s --B1_correction', cmd);
+end
+
+if isfinite(args.max_iter)
+    cmd = sprintf('%s --max_iter %d', cmd, args.max_iter);
+end
+
 if args.test_enhancement
     cmd = sprintf('%s --test_enh', cmd);
+end
+
+if args.quiet
+    cmd = sprintf('%s --quiet', cmd);
 end
 
 if ~isempty(args.aif_name)

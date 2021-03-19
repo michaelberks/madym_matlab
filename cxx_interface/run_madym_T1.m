@@ -42,6 +42,9 @@ function [T1, M0, errorCodes, status, result] =...
 %
 %   All T1 methods implemented in the main MaDym and MaDym-Lite C++ tools are
 %   available to fit. Currently only the variable flip angle method is available:
+%
+%   Run: system([local_madym_root 'madym_T1 --help']); to see full set of
+%   input options to C++ tool
 % 
 %   "VFA"
 %
@@ -62,23 +65,38 @@ end
 args = u_packargs(varargin, 0, ... 
     'cmd_exe', [local_madym_root 'madym_T1'],...
     'cmd_exe_lite', [local_madym_root 'madym_T1_lite'],...
+    'config', '',... Path to a config file to set default options
     'T1_vols', [],... Cell array of variable flip angle file paths
-    'FAs', ... FAs, either single vector used for all samples, or 2D array, 1 row per sample
-    'signals', ...Signals associated with each FA, 1 row per sample
+    'FAs', [],... FAs, either single vector used for all samples, or 2D array, 1 row per sample
+    'signals', [],...Signals associated with each FA, 1 row per sample
   	'TR', [],... TR in msecs, required if directly fitting (otherwise will be taken from FA map headers);
     'method', 'VFA',...T1 method to use to fit, see notes for options
+    'B1_name', '',...Path to B1 correction map
+    'B1_correction', false, ... Apply B1 correction
+    'B1_scaling', NaN, ... Scaling factor to use with B1 map
     'output_dir', [], ...Output path, will use temp dir if empty;
   	'output_name', 'madym_analysis.dat', ... Name of output file
-    'noise_thresh', 100, ... PD noise threshold
+    'noise_thresh', NaN, ... PD noise threshold
     'roi_name', [],...Path to ROI map
     'error_name', [],... Name of error codes image
+    'img_fmt_r', '',...Set image read format
+    'img_fmt_w', '',...Set image write format
+    'no_audit', false,... Turn off audit log
+    'no_log', false,... Turn off propgram log
+    'quiet', false,... Suppress output to stdout
+    'program_log_name', '',...Program log file name
+    'audit_name', '',...Audit file name
+    'audit_dir', '',...Folder in which audit logs are saved
+    'config_out', '',...Name of output config file
     'overwrite', 0,...Set overwrite existing analysis in output dir ON
+    'working_directory', '',...Sets the current working directory for the system call, allows setting relative input paths for data
     'dummy_run', 0 ...Don't run any thing, just print the cmd we'll run to inspect
     );
 clear varargin;
 
 %%
-if isempty(args.T1_vols) && (isempty(args.FAs) || isempty(args.signals))
+if isempty(args.T1_vols) && isempty(args.config) && ...
+        (isempty(args.FAs) || isempty(args.signals))
     error('Must supply either map names, or both FA and signal data');
 end
 
@@ -92,39 +110,103 @@ elseif args.output_dir(end) ~= '\' && args.output_dir(end) ~= '/'
 end
 
 %Check if fitting to full volumes saved on disk, or directly supplied data
-if ~isempty(args.T1_vols)
-    %Use calculate_T1 to fit full volumes
+if ~isempty(args.T1_vols) || ~isempty(args.config)
+    
+    %Use madym_T1 to fit full volumes
     use_lite = false;
     
     %Set up FA map names
     nFAs = length(args.T1_vols);
-    if nFAs < 3
-        error('Only %d FA maps supplied, require at least 3 for T1 fitting',...
-            nFAs);
-    end  
-    fa_str = sprintf('%s', args.T1_vols{1});
-    for i_t = 2:nFAs
-        fa_str = sprintf('%s,%s', fa_str, args.T1_vols{i_t});
+    if nFAs
+        fa_str = sprintf('%s', args.T1_vols{1});
+        for i_t = 2:nFAs
+            fa_str = sprintf('%s,%s', fa_str, args.T1_vols{i_t});
+        end
     end
    
-    %Initialise command argument
-    cmd = sprintf(...
-        '%s -T %s --T1_vols %s -o %s',...
-        args.cmd_exe,...
-        args.method,...
-        fa_str,...
-        args.output_dir);
+    %Check if a config file exists
+    if isempty(args.config)
+        if ~nFAs
+            error ('If no config file set, input T1 volumes must be set');
+        end
+        
+        %Initialise command argument
+        cmd = sprintf(...
+            '%s -T %s --T1_vols %s -o %s',...
+            args.cmd_exe,...
+            args.method,...
+            fa_str,...
+            args.output_dir);
+    else
+        cmd = sprintf('%s --config %s', args.cmd_exe, args.config);
+
+        %Only override the method and output dir if they're not empty
+        if ~isempty(args.method)
+            cmd = sprintf('%s -T %s', cmd, args.method);
+        end
+        if ~isempty(args.T1_vols)
+            cmd = sprintf('%s --T1_vols %s', cmd, fa_str);
+        end
+        if ~isempty(args.output_dir)
+            cmd = sprintf('%s -o %s', cmd, args.output_dir);
+        end
+    end
+      
+    %Set the working dir
+    if ~isempty(args.working_directory)
+        cmd = sprintf('%s --cwd %s', cmd, args.working_directory);
+    end
     
+    if ~isempty(args.B1_name)
+        cmd = sprintf('%s --B1 %s', cmd, args.B1_name);
+    end    
+    if isfinite(args.B1_scaling)
+        cmd = sprintf('%s --B1_scaling %d', cmd, args.B1_scaling);
+    end 
+    if ~isempty(args.img_fmt_r)
+        cmd = sprintf('%s --img_fmt_r %s', cmd, args.img_fmt_r);
+    end
+    if ~isempty(args.img_fmt_w)
+        cmd = sprintf('%s --img_fmt_w %s', cmd, args.img_fmt_w);
+    end
     if ~isempty(args.error_name)
         cmd = sprintf('%s -E %s', cmd, args.error_name);
     end
     if ~isempty(args.roi_name)
         cmd = sprintf('%s --roi %s', cmd, args.roi_name);
     end
+    if args.no_audit
+        cmd = sprintf('%s --no_audit', cmd);
+    end
+
+    if args.no_log
+        cmd = sprintf('%s --no_log', cmd);
+    end
+
+    if args.quiet
+        cmd = sprintf('%s --quiet', cmd);
+    end
+    if ~isempty(args.program_log_name)
+        cmd = sprintf('%s --program_log %s', cmd, args.program_log_name);
+    end
+
+    if ~isempty(args.audit_name)
+        cmd = sprintf('%s --audit %s', cmd, args.audit_name);
+    end
+
+    if ~isempty(args.audit_dir)
+        cmd = sprintf('%s --audit_dir %s', cmd, args.audit_dir);
+    end
+
+    if ~isempty(args.config_out)
+        cmd = sprintf('%s --config_out %s', cmd, args.config_out);
+    end
     if args.overwrite
         cmd = sprintf('%s --overwrite', cmd);
     end
-    cmd = sprintf('%s --T1_noise %5.4f', cmd, args.noise_thresh);
+    if isfinite(args.noise_thresh)
+        cmd = sprintf('%s --T1_noise %5.4f', cmd, args.noise_thresh);
+    end
     
 else
     %Fit directly supplied FA and signal data using calculate_T1_lite
@@ -161,6 +243,15 @@ else
         args.TR,...
         args.output_dir,...
         args.output_name);
+    
+    if args.B1_correction
+        cmd = sprintf('%s --B1_correction', cmd);
+    end
+    
+    %Set the working dir
+    if ~isempty(args.working_directory)
+        cmd = sprintf('%s --cwd %s', cmd, args.working_directory);
+    end
     
     %Check for bad samples, these can screw up Madym as the lite version
     %of the software doesn't do the full range of error checks Madym proper
@@ -315,7 +406,10 @@ function run_test()
         'noise_thresh', 0, ... PD noise threshold
         'roi_name', [],...Path to ROI map
         'overwrite', 1,...Set overwrite existing analysis in output dir ON
-        'dummy_run', 0);
+        'img_fmt_r', 'ANALYZE',...
+        'img_fmt_w', 'ANALYZE',...
+        'dummy_run', 0,...
+        'no_audit', 1);
     signals_fit = signal_from_T1(T1_fit, M0_fit, FAs, TR);
     
     for i_fa = 1:3
@@ -346,58 +440,3 @@ function run_test()
     return;
     
 %% -----------------------------------------------------------------------
-% Below are the full C++ options for madym_T1 and madym_T1_lite
-% 
-% ********************* madym_T1 **************************************
-%       madym_T1 options_:
-%   -c [ --config ] arg (="")             Read input parameters from a 
-%                                         configuration file
-%   --cwd arg (="")                       Set the working directory
-% 
-% madym_T1 config options_:
-%   --roi arg (="")                       Path to ROI map
-%   -T [ --T1_method ] arg (=VFA)         Method used for baseline T1 mapping
-%   --T1_vols arg (=[])                   _filepaths to input signal volumes (eg 
-%                                         from variable flip angles)
-%   --T1_noise arg (=0)                   Noise threshold for fitting baseline T1
-%   --n_T1 arg (=0)                       Number of input signals for baseline T1
-%                                         mapping
-%   -o [ --output ] arg (="")             Output folder
-%   --sparse arg (=0)                     Flag to write output in sparse Analyze 
-%                                         format
-%   --overwrite arg (=0)                  Flag to overwrite existing analysis in 
-%                                         output dir, default false
-%   -E [ --err ] arg (=error_codes)       _filename of error codes map
-%   --program_log arg (=ProgramLog.txt)   _filename of program log, will be 
-%                                         appended with datetime
-%   --config_out arg (=config.txt)        _filename of output config file, will be
-%                                         appended with datetime
-%   --audit arg (=AuditLog.txt)           _filename of audit log, will be appended
-%                                         with datetime
-%   --audit_dir arg (=C:\isbe\code\obj_msvc2015\manchester_qbi_public\bin\Release\audit_logs/)
-%                                         Folder in which audit output is saved
-% 
-%   -h [ --help ]                         Print options and quit
-%   -v [ --version ]
-% 
-% **************** madym_T1_lite **************************************
-%     madym_T1_lite config options_:
-%   --cwd arg (="")                       Set the working directory
-%   --data arg (="")                      Input data filename, see notes for 
-%                                         options
-%   -T [ --T1_method ] arg (=VFA)         Method used for baseline T1 mapping
-%   --FA arg (=0)                         FA of dynamic series
-%   --TR arg (=0)                         TR of dynamic series
-%   --T1_noise arg (=0)                   Noise threshold for fitting baseline T1
-%   --n_T1 arg (=0)                       Number of input signals for baseline T1
-%                                         mapping
-%   -o [ --output ] arg (="")             Output folder
-%   -O [ --output_name ] arg (=madym_analysis.dat)
-%                                         Name of output data file
-% 
-%   -h [ --help ]                         Print options and quit
-%   -v [ --version ]                      Print version and quit '''
-
-
-
-

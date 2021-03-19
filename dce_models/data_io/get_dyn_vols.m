@@ -1,6 +1,6 @@
 function [dyn_vols, dyn_headers] = get_dyn_vols(root_path, num_vols, apply_smoothing, index_fmt)
-%GET_DYN_TIMES *Insert a one line summary here*
-%   [times] = get_dyn_times(root_path, index_fmt, num_vols)
+%GET_DYN_VOLS load dynamic series into 4D data array
+%   [times] = get_dyn_vols(root_path, index_fmt, num_vols)
 %
 % Inputs:
 %      root_path - path to each volume to be loaded, so that the full path

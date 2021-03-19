@@ -65,47 +65,14 @@ function [status, result] = run_madym(model, output_dir, varargin)
 %   All models available in the main MaDym and MaDym-Lite C++ tools are
 %   available to fit. Currently these are:
 % 
-%   "ETM"
-%   Extended-Tofts model. Requires single input AIF. 
-%   Outputs 4 params (= initial values for optimisation):
-%   {Ktrans=0.2, Ve=0.2, Vp=0.2, tau_a=0.0*} *Arterial offset delay
-%   To run a standard Tofts model, use 
+%   See the madym_cxx project wiki for more details:
+% https://gitlab.com/manchester_qbi/manchester_qbi_public/madym_cxx/-/wikis/dce_models
 % 
-%   "DIETM"
-%   Extended-Tofts model with dual-input supply. Requires both AIF and PIF.
-%   Outputs 6 parameters:
-%   {Ktrans=0.2, Ve=0.2, Vp=0.2, fa=0.5, tau_a=0.0, tau_v=0.0*} *Venous delay 
+%   Run: system([local_madym_root 'madym_DCE --help']); to see full set of
+%   input options to C++ tool
 % 
-%   "GADOXETATE"
-%   Leo's model for gaodxetate contrast in the liver. Requires both AIF and PIF.
-%   Outputs 7 parameters:
-%   {Fp=0.6, ve=0.2, ki=0.2, kef=0.1, fa=0.5, tau_a=0.025, tau_v=0}
 %
-%   "MATERNE"
-%   Dual-input single compartment model
-%   {Fp=0.6, fa=0.5, k2=1.0, tau_a=0.025, tau_v=0}
-% 
-%   "2CXM"
-%   2-compartment exchange model. Single AIF input.
-%   Outputs 5 parameters:
-%   { Fp=0.6, PS=0.2, v_e=0.2, v_p=0.2, tau_a=0}
-% 
-%   "DI2CXM"
-%   {Fp=0.6, PS=0.2, v_e=0.2, v_p=0.2, fa0.5, tau_a=0, tau_v=0 }
-% 
-%   "DIIRF"
-%   Dual-input, bi-exponential model that fits the functional form of the
-%   IRF directly, and can be reduced to any of the (DI)2CXM, GADOXETATE, 
-%   MATERNE or TM (but not ETM) models through appropriate fixing of 
-%   parameters. See DI-IRF notes on Matlab repository wiki for further
-%   explanation, and see functions TWO_CXM_PARAMS_MODEL_TO_PHYS and
-%   ACTIVE_PARAMS_MODEL_TO_PHYS for converting the DIRRF outputs into 
-%   physiologically meaningful parameters.
-%   Outputs 7 parameters: 
-%   {Fpos=0.2, Fneg=0.2, Kpos=0.5, Kneg=4.0, fa=0.5, tau_a=0.025, tau_v=0}
-%
-% See also: RUN_MADYM_LITE, TWO_CXM_MODEL, GADOXETATE_MODEL, MATERNE_MODEL,
-% EXTENDED_TOFTS_MODEL, TWO_CXM_PARAMS_MODEL_TO_PHYS, ACTIVE_PARAMS_MODEL_TO_PHYS
+% See also: RUN_MADYM_LITE, RUN_MADYM_T1
 %
 % Created: 20-Feb-2019
 % Author: Michael Berks 
@@ -120,16 +87,22 @@ end
 % Unpack the arguments:
 args = u_packargs(varargin, 0, ...
     'cmd_exe', [local_madym_root 'madym_DCE'],...
+    'config', '',... Path to a config file to set default options
     'no_optimise', false, ...Flag to switch off optimising, will just fit initial parameters values for model
     'T1_vols', [], ..._file names of signal volumes to from which baseline T1 is mapped
+    'T1_method', '',...Method for mapping baseline T1 (eg VFA)
     'dynamic_basename', [], ...Template name for dynamic sequences eg. dynamic/dyn_
-    'dynamic_name_format', '',...Format for converting dynamic series index to string, eg %01u
+    'dyn_dir', '',...Dir to dynamic series (can be included in dynamic basename)
+    'sequence_format', '',...Format for converting dynamic series index to string, eg %01u
     'n_dyns', 0,...Number of dynamic sequence maps to load. If <=0, loads all maps in dynamic dir matching -dyn pattern
     'input_Ct', true,...Flag specifying input dynamic sequence are concentration (not signal) maps
     'output_Ct_sig', true,...Flag requesting concentration (derived from signal) are saved to output
     'output_Ct_mod', true,...Flag requesting modelled concentration maps are saved to output
     'T1_name', '',...Path to T1 map
     'M0_name', '',...Path to M0 map
+    'B1_name', '',...Path to B1 correction map
+    'B1_correction', false, ... Apply B1 correction
+    'B1_scaling', NaN, ... Scaling factor to use with B1 map
     'r1_const', NaN,...Relaxivity constant of concentration in tissue (in ms)
     'M0_ratio', true,...Flag to use ratio method to scale signal instead of supplying M0
     'dose', NaN,...Concentration dose (mmole/kg)
@@ -140,6 +113,7 @@ args = u_packargs(varargin, 0, ...
     'last_image', NaN,...Last image used to compute model fit
     'roi_name', '',...Path to ROI map
     'aif_name', '',...Path to precomputed AIF if not using population AIF
+    'aif_map', '',...Path to to mask from which AIF will be computed on the fly
     'pif_name', '',...Path to precomputed PIF if not deriving from AIF
     'IAUC_times', [],..._times (in s) at which to compute IAUC values
     'param_names', [],...Names of model parameters to be optimised, used to name the output parameter maps
@@ -148,21 +122,42 @@ args = u_packargs(varargin, 0, ...
     'fixed_values', [],..._values for fixed parameters (overrides default initial parameter values)
     'relative_limit_params', [],...Parameters with relative limits on their optimisation bounds
     'relative_limit_values', [],..._values for relative bounds, sets lower/upper bound as init param -/+ relative limit
+    'residuals', '',... Path to existing residuals map
     'init_maps_dir', '',...Path to directory containing maps of parameters to initialise fit (overrides init_params)
     'init_map_params', [],...Parameters initialised from maps (if empty and init_maps_dir set, all params from maps)
     'dyn_noise', false,...Set to use varying temporal noise in model fit
     'test_enhancement', false,...Set test-for-enhancement flag
-    'sparse_write', false,...Set sparseWrite to save output map sin sparse mode
+    'max_iter', NaN,... Maximum number of iterations in model fit
+    'img_fmt_r', '',...Set image read format
+    'img_fmt_w', '',...Set image write format
     'overwrite', false,...Set overwrite existing analysis in output dir
+    'no_audit', false,... Turn off audit log
+    'no_log', false,... Turn off propgram log
+    'quiet', false,... Suppress output to stdout
     'program_log_name', '',...Program log file name
     'audit_name', '',...Audit file name
+    'audit_dir', '',...Folder in which audit logs are saved
+    'config_out', '',...Name of output config file
     'error_name', '',...Error codes image file name
     'working_directory', '',...Sets the current working directory for the system call, allows setting relative input paths for data
     'dummy_run', false);...Don't run any thing, just print the cmd we'll run to inspect
 clear varargin;
 
-cmd = sprintf('%s -m %s -o %s ',...
-    args.cmd_exe, model, output_dir);  
+%Check if a config file exists
+if isempty(args.config)
+    cmd = sprintf('%s -m %s -o %s ',...
+        args.cmd_exe, model, output_dir);
+else
+    cmd = sprintf('%s --config %s', args.cmd_exe, args.config);
+
+    %Only override the model and output dir if they're not empty
+    if ~isempty(model)
+        cmd = sprintf('%s -m %s', cmd, model);
+    end
+    if ~isempty(output_dir)
+        cmd = sprintf('%s -o %s', cmd, output_dir);
+    end
+end
 
 %Set the working dir
 if ~isempty(args.working_directory)
@@ -172,6 +167,28 @@ end
 %Set the dynamic names
 if ~isempty(args.dynamic_basename)
     cmd = sprintf('%s -d %s', cmd, args.dynamic_basename);
+end
+
+if ~isempty(args.dyn_dir)
+    cmd = sprintf('%s --dyn_dir %s', cmd, args.dyn_dir);
+end
+
+%Set the format
+if ~isempty(args.sequence_format)
+    cmd = sprintf('%s --sequence_format %s', cmd, args.sequence_format);
+end
+
+%Set the number of dynamics
+if args.n_dyns
+    cmd = sprintf('%s --n_dyns %d', cmd, args.n_dyns);
+end
+
+%Set image formats
+if ~isempty(args.img_fmt_r)
+    cmd = sprintf('%s --img_fmt_r %s', cmd, args.img_fmt_r);
+end
+if ~isempty(args.img_fmt_w)
+    cmd = sprintf('%s --img_fmt_w %s', cmd, args.img_fmt_w);
 end
 
 %Now set any args that require option inputs
@@ -212,6 +229,10 @@ else %Below are only needed if input is signals
         if args.T1_noise
             cmd = sprintf('%s --T1_noise %5.4f', cmd, args.T1_noise);
         end
+        
+        if ~isempty(args.T1_method)
+            cmd = sprintf('%s --T1_method %s', cmd, args.T1_method);
+        end
 
     end 
     
@@ -229,6 +250,17 @@ else %Below are only needed if input is signals
     end
     
 end
+
+%B1 correction options
+if ~isempty(args.B1_name)
+    cmd = sprintf('%s --B1 %s', cmd, args.B1_name);
+end    
+if args.B1_correction
+    cmd = sprintf('%s --B1_correction', cmd);
+end
+if isfinite(args.B1_scaling)
+    cmd = sprintf('%s --B1_scaling %d', cmd, args.B1_scaling);
+end    
 
 %Now go through all the other optional parameters, and if they've been set,
 %set the necessary option flag in the cmd string
@@ -248,12 +280,28 @@ if args.test_enhancement
     cmd = sprintf('%s --test_enh', cmd);
 end
 
+if isfinite(args.max_iter)
+    cmd = sprintf('%s --max_iter %d', cmd, args.max_iter);
+end
+
 if args.dyn_noise
     cmd = sprintf('%s --dyn_noise', cmd);
 end
 
 if args.overwrite
     cmd = sprintf('%s --overwrite', cmd);
+end
+
+if args.no_audit
+    cmd = sprintf('%s --no_audit', cmd);
+end
+
+if args.no_log
+    cmd = sprintf('%s --no_log', cmd);
+end
+
+if args.quiet
+    cmd = sprintf('%s --quiet', cmd);
 end
 
 if isfinite(args.hct)
@@ -276,6 +324,10 @@ if ~isempty(args.roi_name)
     cmd = sprintf('%s --roi %s', cmd, args.roi_name);
 end
 
+if ~isempty(args.residuals)
+    cmd = sprintf('%s --residuals %s', cmd, args.residuals);
+end
+
 if ~isempty(args.aif_name)
     cmd = sprintf('%s --aif %s', cmd, args.aif_name);
 end
@@ -290,6 +342,14 @@ end
 
 if ~isempty(args.audit_name)
     cmd = sprintf('%s --audit %s', cmd, args.audit_name);
+end
+
+if ~isempty(args.audit_dir)
+    cmd = sprintf('%s --audit_dir %s', cmd, args.audit_dir);
+end
+
+if ~isempty(args.config_out)
+    cmd = sprintf('%s --config_out %s', cmd, args.config_out);
 end
 
 if ~isempty(args.error_name)
@@ -444,11 +504,14 @@ Ct_output_dir = [tempdir 'mdm_analysis_Ct/'];
     'output_Ct_sig',1,...
     'output_Ct_mod',1,...
     'injection_image', injection_img,...
-    'overwrite', 1);
+    'img_fmt_r', 'ANALYZE',...
+    'img_fmt_w', 'ANALYZE',...
+    'overwrite', 1,...
+    'no_audit', 1);
 
 fprintf('status: %d\nresult: %s\n', status, result);
 
-ktrans_fit = load_img_volume([Ct_output_dir 'ktrans.hdr']);
+ktrans_fit = load_img_volume([Ct_output_dir 'Ktrans.hdr']);
 ve_fit = load_img_volume([Ct_output_dir 'v_e.hdr']);
 vp_fit = load_img_volume([Ct_output_dir 'v_p.hdr']);
 tau_fit = load_img_volume([Ct_output_dir 'tau_a.hdr']);
@@ -463,9 +526,9 @@ Cs_t = zeros(1,100);
 Cm_t = zeros(1,100);
 for i_dyn = 1:nDyns
     Cs_t(i_dyn) = ...
-        load_img_volume([Ct_output_dir 'Ct_sig' num2str(i_dyn) '.hdr']);
+        load_img_volume([Ct_output_dir 'Ct_sig/Ct_sig' num2str(i_dyn) '.hdr']);
     Cm_t(i_dyn) = ...
-        load_img_volume([Ct_output_dir 'Ct_mod' num2str(i_dyn) '.hdr']);
+        load_img_volume([Ct_output_dir 'Ct_mod/Ct_mod' num2str(i_dyn) '.hdr']);
 end
 
 figure('Name', 'madym test applied');
@@ -490,11 +553,14 @@ St_output_dir = [tempdir 'mdm_analysis_St/'];
     'T1_name', T1_name,...
     'r1_const', r1_const,...
     'injection_image', injection_img,...
-    'overwrite', 1);
+    'img_fmt_r', 'ANALYZE',...
+    'img_fmt_w', 'ANALYZE',...
+    'overwrite', 1,...
+    'no_audit', 1);
 
 fprintf('status: %d\nresult: %s\n', status, result);
 
-ktrans_fit = load_img_volume([St_output_dir 'ktrans.hdr']);
+ktrans_fit = load_img_volume([St_output_dir 'Ktrans.hdr']);
 ve_fit = load_img_volume([St_output_dir 'v_e.hdr']);
 vp_fit = load_img_volume([St_output_dir 'v_p.hdr']);
 tau_fit = load_img_volume([St_output_dir 'tau_a.hdr']);
@@ -509,9 +575,9 @@ Cs_t = zeros(1,100);
 Cm_t = zeros(1,100);
 for i_dyn = 1:nDyns
     Cs_t(i_dyn) = ...
-        load_img_volume([St_output_dir 'Ct_sig' num2str(i_dyn) '.hdr']);
+        load_img_volume([St_output_dir 'Ct_sig/Ct_sig' num2str(i_dyn) '.hdr']);
     Cm_t(i_dyn) = ...
-        load_img_volume([St_output_dir 'Ct_mod' num2str(i_dyn) '.hdr']);
+        load_img_volume([St_output_dir 'Ct_mod/Ct_mod' num2str(i_dyn) '.hdr']);
 end
 
 subplot(1,2,2);
@@ -534,106 +600,23 @@ for i_dyn = 1:nDyns
     delete([St_names{i_dyn}(1:end-4) '.xtr']);
 end  
 delete(T1_name);
-output_files = dir(Ct_output_dir);
-for i_f = 3:length(output_files)
-    delete([Ct_output_dir output_files(i_f).name]);
+
+delete_dirs = {...
+    [Ct_output_dir 'Ct_sig'],...
+    [Ct_output_dir 'Ct_mod'],...
+    Ct_output_dir,...
+    [St_output_dir 'Ct_sig'],...
+    [St_output_dir 'Ct_mod'],...
+    St_output_dir};
+
+for i_d = 1:length(delete_dirs)
+    del_dir = delete_dirs{i_d};
+
+    output_files = dir(del_dir);
+    for i_f = 3:length(output_files)
+        delete(fullfile(del_dir, output_files(i_f).name));
+    end
+    rmdir(del_dir);
 end
-rmdir(Ct_output_dir);
-output_files = dir(St_output_dir);
-for i_f = 3:length(output_files)
-    delete([St_output_dir output_files(i_f).name]);
-end
-rmdir(St_output_dir);
 
 %% ------------------------------------------------------------------------
-% Below are the full C++ options for madym lite
-%      madym options_:
-%   -c [ --config ] arg (="")             Read input parameters from a 
-%                                         configuration file
-%   --cwd arg (="")                       Set the working directory
-% 
-% madym config options_:
-%   --Ct arg (=0)                         Flag specifying input dynamic sequence 
-%                                         are concentration (not signal) maps
-%   -d [ --dyn ] arg (=dyn_)              Root name for dynamic volumes
-%   --dyn_dir arg (="")                   Folder containing dynamic volumes, can 
-%                                         be left empty if already included in 
-%                                         option --dyn
-%   --dyn_name_format arg (=%01u)        Number format for suffix specifying 
-%                                         temporal index of dynamic volumes
-%   -n [ --n_dyns ] arg (=0)              Number of DCE volumes, if 0 uses all 
-%                                         images matching file pattern
-%   -i [ --inj ] arg (=8)                 Injection image
-%   --roi arg (="")                       Path to ROI map
-%   -T [ --T1_method ] arg (=VFA)         Method used for baseline T1 mapping
-%   --T1_vols arg (=[])                   _filepaths to input signal volumes (eg 
-%                                         from variable flip angles)
-%   --T1_noise arg (=0)                   Noise threshold for fitting baseline T1
-%   --n_T1 arg (=0)                       Number of input signals for baseline T1
-%                                         mapping
-%   --M0_ratio arg (=1)                   Flag to use ratio method to scale 
-%                                         signal instead of precomputed M0
-%   --T1 arg (="")                        Path to precomputed T1 map
-%   --M0 arg (="")                        Path to precomputed M0 map
-%   --r1 arg (=3.3999999999999999)        Relaxivity constant of concentration in
-%                                         tissue
-%   --aif arg (="")                       Path to precomputed AIF, if not set 
-%                                         uses population AIF
-%   --pif arg (="")                       Path to precomputed AIF, if not set 
-%                                         derives from AIF
-%   --aif_slice arg (=0)                  Slice used to automatically measure AIF
-%   -D [ --dose ] arg (=0.10000000000000001)
-%                                         Contrast-agent dose
-%   -H [ --hct ] arg (=0.41999999999999998)
-%                                         Haematocrit level
-%   -m [ --model ] arg (="")              Tracer-kinetic model
-%   --init_params arg (=[ ])              Initial values for model parameters to 
-%                                         be optimised
-%   --init_maps arg (="")                 Path to folder containing parameter 
-%                                         maps for per-voxel initialisation
-%   --init_map_params arg (=[ ])          Index of parameters sampled from maps
-%   --param_names arg (=[])               Names of model parameters, used to 
-%                                         override default output map names
-%   --fixed_params arg (=[ ])             Index of parameters fixed to their 
-%                                         initial values
-%   --fixed_values arg (=[ ])             _values for fixed parameters
-%   --relative_limit_params arg (=[ ])    Index of parameters to which relative 
-%                                         limits are applied
-%   --relative_limit_values arg (=[ ])    _values for relative limits - optimiser 
-%                                         bounded to range initParam +/- rel_limit
-%   --first arg (=0)                      First image used in model fit cost 
-%                                         function
-%   --last arg (=0)                       Last image used in model fit cost 
-%                                         function
-%   --no_opt arg (=0)                     Flag to turn-off optimisation, default 
-%                                         false
-%   --dyn_noise arg (=0)                  Flag to use varying temporal noise in 
-%                                         model fit, default false
-%   --test_enh arg (=1)                   Flag to test for enhancement before 
-%                                         fitting model, default true
-%   --max_iter arg (=0)                   Max iterations per voxel in 
-%                                         optimisation - 0 for no limit
-%   --Ct_sig arg (=0)                     Flag to save signal-derived dynamic 
-%                                         concentration maps
-%   --Ct_mod arg (=0)                     Flag to save modelled dynamic 
-%                                         concentration maps
-%   -I [ --iauc ] arg (=[ 60 90 120 ])    _times (in s, post-bolus injection) at 
-%                                         which to compute IAUC
-%   -o [ --output ] arg (="")             Output folder
-%   --overwrite arg (=0)                  Flag to overwrite existing analysis in 
-%                                         output dir, default false
-%   --sparse arg (=0)                     Flag to write output in sparse Analyze 
-%                                         format
-%   -E [ --err ] arg (=error_codes)       _filename of error codes map
-%   --program_log arg (=ProgramLog.txt)   _filename of program log, will be 
-%                                         appended with datetime
-%   --config_out arg (=config.txt)        _filename of output config file, will be
-%                                         appended with datetime
-%   --audit arg (=AuditLog.txt)           _filename of audit log, will be appended
-%                                         with datetime
-%   --audit_dir arg (=C:\isbe\code\obj_msvc2015\manchester_qbi_public\bin\Release\audit_logs/)
-%                                         Folder in which audit output is saved
-% 
-%   -h [ --help ]                         Print options and quit
-%   -v [ --version ]                      Print version and quit
-        
