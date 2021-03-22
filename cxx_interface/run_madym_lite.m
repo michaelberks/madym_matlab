@@ -1,9 +1,9 @@
-function [model_params, model_fit, iauc, error_codes, model_conc, dyn_conc] =...
+function [model_params, model_fit, iauc, error_codes, Ct_m, Ct_s] =...
     run_madym_lite(model, input_data, varargin)
 %RUN_MADYM_LITE wrapper function to call C++ tool Madym-lite. Fits
 %   tracer-kinetic models to DCE time-series, returning the model
 %   parameters and modelled concentration time-series
-%   [model_params, model_fit, error_codes, model_conc, dyn_conc] = ...
+%   [model_params, model_fit, error_codes, Ct_m, Ct_s] = ...
 %       run_madym_lite(model, input_data, varargin)
 %
 % RUN_MADYM_LITE uses the U_PACKARGS interface function
@@ -36,37 +36,37 @@ function [model_params, model_fit, iauc, error_codes, model_conc, dyn_conc] =...
 %       for fitting each sample. 0 implies no errors or warnings. For all
 %       non-zero values refer to Madym documentation for details
 %
-%      model_conc (2D array, Nsamples x Ntimes) - the modelled
+%      Ct_m (2D array, Nsamples x Ntimes) - the modelled
 %       concentration time-series for each input
 %
-%      dyn_conc (2D array, Nsamples x 2) - the signal-derived
+%      Ct_s (2D array, Nsamples x Ntimes) - the signal-derived
 %       concentration time-series for each input
 %
 % Examples:
 %   Fitting to concentration time-series. If using a population AIF, you
 %   must supply a vector of dynamic times. A population AIF (PIF) is used
 %   if the aif_name (pif_name) option is left empty.
-%   [model_params, model_fit, error_codes, model_conc] = ...
-%       run_madym_lite("2CXM", dyn_conc, 'dyn_times', t)
+%   [model_params, model_fit, error_codes, Ct_m] = ...
+%       run_madym_lite("2CXM", Ct_s, 'dyn_times', t)
 %
 %   Fitting to concentration time-series using a patient specific AIF. The
 %   AIF should be defined in a text file with two columns containing the
 %   dynamic times and associated AIF value at each times respectively. Pass
 %   the full filepath as input
-%   [model_params, model_fit, error_codes, model_conc] = ...
-%       run_madym_lite("2CXM", dyn_conc, 'aif_name', 'C:\DCE_data\pt_AIF.txt')
+%   [model_params, model_fit, error_codes, Ct_m] = ...
+%       run_madym_lite("2CXM", Ct_s, 'aif_name', 'C:\DCE_data\pt_AIF.txt')
 %
 %   Fitting to signals - Set input_Ct to false and use options to supply
 %   T1 values (and TR, FA, relax_coeff etc) to convert signals to
 %   concentration.
-%   [model_params, model_fit, error_codes, model_conc, dyn_conc] = ...
+%   [model_params, model_fit, error_codes, Ct_m, Ct_s] = ...
 %       run_madym_lite("2CXM", dyn_signals, 'dyn_times', t,...
 %           'input_Ct', 0, 'T1', T1_vals, 'TR', TR, 'FA', FA)
 %
 %   Fixing values in a model - eg to fit a TM instead of ETM, set Vp (the
 %   3rd parameter in the ETM to 0)
-%   [model_params, model_fit, error_codes, model_conc] = ...
-%       run_madym_lite("ETM", dyn_conc, 'dyn_times', t,...
+%   [model_params, model_fit, error_codes, Ct_m] = ...
+%       run_madym_lite("ETM", Ct_s, 'dyn_times', t,...
 %           'fixed_params', 3, 'fixed_values', 0.0)
 %
 % Notes:
@@ -107,11 +107,11 @@ args = u_packargs(varargin, 0, ...
     'B1_correction', false, ... Apply B1 correction
 ... The below are all only required if we're converting from signals
     'T1', [], ...Baseline T1 values (in ms)
-    'S0', [], ...Baseline S0 values, required if not using ratio method
+    'M0', [], ...Baseline M0 values, required if not using ratio method
  	'TR', 0, ... TR of dynamic series (in ms), must be >0 if converting signals
     'FA', NaN, ... Flip angle of dynamic series (degrees), must be set if converting signals
     'r1_const', NaN, ...Relaxivity constant of concentration in tissue (in ms)
-    'M0_ratio', true, ... Flag to use ratio method to scale signal instead of supplying S0
+    'M0_ratio', true, ... Flag to use ratio method to scale signal instead of supplying M0
 ...
     'injection_image', NaN, ... Injection image
     'hct', NaN, ...Haematocrit correction
@@ -145,13 +145,13 @@ if size(input_data, 2) == 1
 end
 [nSamples, nDyns] = size(input_data);
 
-%If we're converting from signal to concentration, append T1 (and S0 if not
+%If we're converting from signal to concentration, append T1 (and M0 if not
 %using ratio method) to pinput data
 if ~args.input_Ct
     input_data = [input_data args.T1(:)];
     
     if ~args.M0_ratio
-        input_data = [input_data args.S0(:)];
+        input_data = [input_data args.M0(:)];
     end
 end
 
@@ -356,8 +356,8 @@ if args.dummy_run
     model_fit = [];
     iauc = [];
     error_codes = [];
-    model_conc = [];
-    dyn_conc = [];
+    Ct_m = [];
+    Ct_s = [];
     return;
     
 end
@@ -419,12 +419,12 @@ if args.output_Ct_mod
     if args.output_Ct_sig
         %Have another nDyns of dynamic concentration values
         param_col2 = param_col2 - nDyns;
-        dyn_conc = outputData(:, param_col2+(1:nDyns));
+        Ct_s = outputData(:, param_col2+(1:nDyns));
     end
     
     %After the params we have nDyns of model concentration values
     param_col2 = param_col2 - nDyns;
-    model_conc = outputData(:, param_col2+(1:nDyns));
+    Ct_m = outputData(:, param_col2+(1:nDyns));
 end
 model_params = outputData(:, param_col1:param_col2);
 
