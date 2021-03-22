@@ -41,8 +41,13 @@ if ~exist('swap_axes', 'var') || isempty(swap_axes)
     swap_axes = true;
 end
 
-header = read_analyze_hdr(volume_path);
-volume = double(read_analyze_img([],header)) / scale;
+if exist('nifti_read', 'builtin')
+    header = niftiinfo(volume_path);
+    volume = double(niftiread(volume_path)) / scale;
+else
+    header = read_analyze_hdr(volume_path);
+    volume = double(read_analyze_img([],header)) / scale;
+end
 
 if swap_axes
    volume = permute(volume, [2 1 3]);
