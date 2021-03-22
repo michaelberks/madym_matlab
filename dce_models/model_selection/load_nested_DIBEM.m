@@ -62,7 +62,7 @@ if ~exist('convert_to_phys', 'var')
 end
 
 %Define these - we need to update Madym to be consistent with naming
-madym_names = {'Fpos', 'Fneg', 'Kpos', 'Kneg', 'fa', 'aoffset'};
+madym_names = {'Fpos', 'Fneg', 'Kpos', 'Kneg', 'f_a', 'tau_a'};
 param_names = {'Fpos', 'Fneg', 'Kpos', 'Kneg', 'f_a', 'tau_a'};
 
 %Loop through each model_params subscipt, loading in the parameters
@@ -79,7 +79,7 @@ for i_model = 1:n_models
     model_params.(mod_i).model_fit = load_img_volume(...
         [analysis_dir 'residuals.img']);
     model_params.(mod_i).error_img =...
-        load_img_volume([analysis_dir 'error_codes.img']);
+        load_img_volume([analysis_dir 'error_tracker.img']);
 
     %Load model_params parameters
     model_params.(mod_i).param_names = param_names;
