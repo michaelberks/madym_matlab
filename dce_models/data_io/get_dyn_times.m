@@ -37,123 +37,17 @@ dyn_TR = zeros(num_vols,1);
 dyn_FA = zeros(num_vols,1);
 
 for i_vol = 1:num_vols
-    vol_path = [root_path sprintf(index_fmt, i_vol) '.xtr'];
-    ff = fopen(vol_path);
-    xtr_ss = textscan(ff, '%s');
-    fclose(ff);
-    xtr_ss = xtr_ss{1};
     
-    if strcmpi(xtr_ss{1}, 'voxel')
-        [dyn_times(i_vol), dyn_FA(i_vol), dyn_TR(i_vol)] =...
-            read_xtr_old(xtr_ss);
-    else
-        [dyn_times(i_vol), dyn_FA(i_vol), dyn_TR(i_vol)] =...
-            read_xtr_new(xtr_ss);
-    end
+    vol_path = [root_path sprintf(index_fmt, i_vol) '.xtr'];
+    [xtr_fields, xtr_values] = read_xtr_file(vol_path);
+    
+    %Would be more robust to check fields present than assume they are
+    dyn_times(i_vol) =...
+        madym_timestamp_to_secs(...
+        xtr_values(strcmpi(xtr_fields, 'timestamp')));
+    
+    dyn_FA(i_vol) = xtr_values(strcmpi(xtr_fields, 'FlipAngle'));
+    dyn_TR(i_vol) = xtr_values(strcmpi(xtr_fields, 'TR'));
     
 end
 dyn_times = (dyn_times - dyn_times(1))/60;
-% ------------------ End of main function --------------------------------
-%% -----------------------------------------------------------------------
-function [dyn_t, dyn_FA, dyn_TR] = read_xtr_old(xtr_ss)
-
-    %Find index of time stamp
-    t_idx = find(strcmpi(xtr_ss, 'timestamp:'),1);
-    
-    if isempty(t_idx)
-        t_idx = find(strcmpi(xtr_ss, 'timestamp'),1);
-    end
-    if isempty(t_idx)
-        error(['Timestamp not found for volume ' num2str(i_vol)]);
-    end
-    
-    hh = str2double(xtr_ss{t_idx+1});
-    mm = NaN;
-    ss = NaN;
-    if t_idx < length(xtr_ss)-1
-        mm = str2double(xtr_ss{t_idx+2});
-        ss = str2double(xtr_ss{t_idx+3});
-    end
-    if isnan(mm) || isnan(ss)
-        timeStamp = hh;
-        hh = floor(timeStamp / 10000);
-		mm = floor((timeStamp - 10000 * hh) / 100);
-		ss = (timeStamp...
-            - 10000 * hh...
-            - 100 * mm);
-    end
-
-    dyn_t = 60*60*hh + 60*mm + ss;
-    
-    %Find index of flip angle
-    t_idx = find(strcmpi(xtr_ss, 'angle:'),1);    
-    if isempty(t_idx)
-        t_idx = find(strcmpi(xtr_ss, 'FlipAngle'),1);
-    end
-    if isempty(t_idx)
-        error(['Flip angle not found for volume ' num2str(i_vol)]);
-    end
-    dyn_FA = str2double(xtr_ss{t_idx+1});
-    
-    %Find index of TR
-    t_idx = find(strcmpi(xtr_ss, 'TR:'),1);    
-    if isempty(t_idx)
-        t_idx = find(strcmpi(xtr_ss, 'TR'),1);
-    end
-    if isempty(t_idx)
-        error(['TR not found for volume ' num2str(i_vol)]);
-    end
-    dyn_TR = str2double(xtr_ss{t_idx+1});
-    
-%% ------------------------------------------------------------------------    
-function [dyn_t, dyn_FA, dyn_TR] = read_xtr_new(xtr_ss)
-
-    %Find index of time stamp
-    t_idx = find(strcmpi(xtr_ss, 'timestamp:'),1);
-    
-    if isempty(t_idx)
-        t_idx = find(strcmpi(xtr_ss, 'timestamp'),1);
-    end
-    if isempty(t_idx)
-        error(['Timestamp not found for volume ' num2str(i_vol)]);
-    end
-    
-    hh = str2double(xtr_ss{t_idx+1});
-    mm = NaN;
-    ss = NaN;
-    if t_idx < length(xtr_ss)-1
-        mm = str2double(xtr_ss{t_idx+2});
-        ss = str2double(xtr_ss{t_idx+3});
-    end
-    if isnan(mm) || isnan(ss)
-        timeStamp = hh;
-        hh = floor(timeStamp / 10000);
-		mm = floor((timeStamp - 10000 * hh) / 100);
-		ss = (timeStamp...
-            - 10000 * hh...
-            - 100 * mm);
-    end
-    dyn_t = 60*60*hh + 60*mm + ss;
-    
-    %Find index of flip angle
-    t_idx = find(strcmpi(xtr_ss, 'angle:'),1);    
-    if isempty(t_idx)
-        t_idx = find(strcmpi(xtr_ss, 'FlipAngle'),1);
-    end
-    if isempty(t_idx)
-        error(['Flip angle not found for volume ' num2str(i_vol)]);
-    end
-    dyn_FA = str2double(xtr_ss{t_idx+1});
-    
-    %Find index of TR
-    t_idx = find(strcmpi(xtr_ss, 'TR:'),1);    
-    if isempty(t_idx)
-        t_idx = find(strcmpi(xtr_ss, 'TR'),1);
-    end
-    if isempty(t_idx)
-        error(['TR not found for volume ' num2str(i_vol)]);
-    end
-    dyn_TR = str2double(xtr_ss{t_idx+1});
-
-    
-

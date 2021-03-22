@@ -1,15 +1,15 @@
 function [fields, values] = read_xtr_file(xtr_path)
-%READ_XTR_FILE *Insert a one line summary here*
+%READ_XTR_FILE read acquisition parameters from xtr file used in Madym
 %   [fields, values] = read_xtr_file(xtr_path)
 %
 % Inputs:
-%      xtr_path - *Insert description of input variable here*
+%      xtr_path - path to xtr file
 %
 %
 % Outputs:
-%      fields - *Insert description of input variable here*
+%      fields - cell array of parameter names contained in file
 %
-%      values - *Insert description of input variable here*
+%      values - values for each field
 %
 %
 % Example:
