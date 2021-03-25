@@ -1,4 +1,5 @@
-function [volume, header] = load_img_volume(volume_path, scale, flip_y, swap_axes)
+function [volume, header] = load_img_volume(...
+    volume_path, scale, flip_y, swap_axes)
 %LOAD_IMG_VOLUME Load image from Analyze 7.5 file, applying default
 %rotation and scaling
 %   [volume] = load_raw_volume(volume_path)
@@ -41,8 +42,12 @@ if ~exist('swap_axes', 'var') || isempty(swap_axes)
     swap_axes = true;
 end
 
-if exist('nifti_read', 'builtin')
-    header = niftiinfo(volume_path);
+if exist('niftiread', 'file')
+    try
+        header = niftiinfo(volume_path);
+    catch
+        header = [];
+    end
     volume = double(niftiread(volume_path)) / scale;
 else
     header = read_analyze_hdr(volume_path);

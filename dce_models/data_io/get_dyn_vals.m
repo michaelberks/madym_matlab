@@ -1,4 +1,6 @@
-function [dyn_signals, signal_baseline] = get_dyn_vals(root_path, num_vols, roi, index_fmt, num_baseline_pts)
+function [dyn_signals, signal_baseline] = get_dyn_vals(...
+    root_path, num_vols, roi, index_fmt, num_baseline_pts, ...
+    scale, flip_y, swap_axes)
 %GET_DYN_VALS given directory of volumes and ROI mask, get array of
 %time-series for voxels in the ROI
 %   [times] = get_dyn_vals(root_path, num_vols, roi, index_fmt)
@@ -40,10 +42,19 @@ end
 if ~exist('num_baseline_pts', 'var') || isempty(num_baseline_pts)
     num_baseline_pts = 5;
 end
+if ~exist('scale', 'var') || isempty(scale)
+    scale = 1;
+end
+if ~exist('flip_y', 'var') || isempty(flip_y)
+    flip_y = true;
+end
+if ~exist('swap_axes', 'var') || isempty(swap_axes)
+    swap_axes = true;
+end
 
 %If ROI is a path, load it from disk
 if ischar(roi)
-    roi = load_img_volume(roi) > 0;
+    roi = load_img_volume(roi, scale, flip_y, swap_axes) > 0;
 end
 
 num_pts = nnz(roi);
@@ -52,8 +63,9 @@ dyn_signals = zeros(num_pts, num_vols);
 load_vols = ischar(root_path);
 for i_vol = 1:num_vols
     if load_vols
-        vol_path = [root_path sprintf(index_fmt, i_vol) '.hdr'];
-        vol = load_img_volume(vol_path);
+        vol_path = [root_path sprintf(index_fmt, i_vol)];
+        vol = load_img_volume(vol_path,...
+            scale, flip_y, swap_axes);
     else
         vol = root_path(:,:,:,i_vol);
     end

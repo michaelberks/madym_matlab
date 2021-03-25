@@ -332,6 +332,10 @@ if ~isempty(args.aif_name)
     cmd = sprintf('%s --aif %s', cmd, args.aif_name);
 end
 
+if ~isempty(args.aif_map)
+    cmd = sprintf('%s --aif_map %s', cmd, args.aif_map);
+end
+
 if ~isempty(args.pif_name)
     cmd = sprintf('%s --pif %s', cmd, args.pif_name);
 end

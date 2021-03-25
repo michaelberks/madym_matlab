@@ -1,4 +1,6 @@
-function [dyn_vols, dyn_headers] = get_dyn_vols(root_path, num_vols, apply_smoothing, index_fmt)
+function [dyn_vols, dyn_headers] = get_dyn_vols(...
+    root_path, num_vols, apply_smoothing, index_fmt, ...
+    scale, flip_y, swap_axes)
 %GET_DYN_VOLS load dynamic series into 4D data array
 %   [times] = get_dyn_vols(root_path, index_fmt, num_vols)
 %
@@ -38,6 +40,15 @@ end
 if ~exist('index_fmt', 'var') || isempty(index_fmt)
     index_fmt = '%01u';
 end
+if ~exist('scale', 'var') || isempty(scale)
+    scale = 1;
+end
+if ~exist('flip_y', 'var') || isempty(flip_y)
+    flip_y = true;
+end
+if ~exist('swap_axes', 'var') || isempty(swap_axes)
+    swap_axes = true;
+end
 
 if nargout > 1
     load_headers = true;
@@ -47,11 +58,11 @@ end
 
 for i_vol = 1:num_vols
     
-    vol_path = [root_path sprintf(index_fmt, i_vol) '.hdr'];
+    vol_path = [root_path sprintf(index_fmt, i_vol)];
     if load_headers        
         [d, dyn_header] = load_img_volume(vol_path);
     else
-        d = load_img_volume(vol_path);
+        d = load_img_volume(vol_path, scale, flip_y, swap_axes);
     end
     
     if i_vol == 1
