@@ -123,6 +123,7 @@ args = u_packargs(varargin, 0, ...
   	'pif_name', [], ... Path to precomputed PIF if not deriving from AIF
 ...
     'IAUC_times', [60 90 120],... "_times (in s) at which to compute IAUC values
+    'IAUC_at_peak', false,...Flag requesting IAUC computed at peak signal
     'init_params', [],... Initial values for model parameters to be optimised, either as single vector, or 2D array NSamples x N_params
     'fixed_params', [],...Parameters fixed to their initial values (ie not optimised)
     'fixed_values', [],... _values for fixed parameters (overrides default initial parameter values)"
@@ -301,6 +302,10 @@ if ~isempty(args.IAUC_times)
     cmd = sprintf('%s --iauc %s', cmd, IAUC_str);
 end
 
+if args.IAUC_at_peak
+    cmd = sprintf('%s --iauc_peak %s', cmd);
+end
+
 load_params = false;
 if ~isempty(args.init_params)
     if nSamples > 1 && size(args.init_params,1) == nSamples
@@ -407,7 +412,7 @@ outputData = load(fullOutPath);
 error_codes = outputData(:,1:2);
 model_fit = outputData(:,3);
 
-n_iauc = length(args.IAUC_times);
+n_iauc = length(args.IAUC_times) + (args.IAUC_at_peak > 0);
 iauc = outputData(:, 3 + (1:n_iauc));
 
 %Workout which columns hold parameter values

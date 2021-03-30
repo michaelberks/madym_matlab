@@ -116,6 +116,7 @@ args = u_packargs(varargin, 0, ...
     'aif_map', '',...Path to to mask from which AIF will be computed on the fly
     'pif_name', '',...Path to precomputed PIF if not deriving from AIF
     'IAUC_times', [],..._times (in s) at which to compute IAUC values
+    'IAUC_at_peak', false,...Flag requesting IAUC computed at peak signal
     'param_names', [],...Names of model parameters to be optimised, used to name the output parameter maps
     'init_params', [],...Initial values for model parameters to be optimised, either as single vector, or 2D array NSamples x N_params
     'fixed_params', [],...Parameters fixed to their initial values (ie not optimised)
@@ -366,6 +367,10 @@ if ~isempty(args.IAUC_times)
         IAUC_str = sprintf('%s,%3.2f', IAUC_str, args.IAUC_times(i_t));
     end
     cmd = sprintf('%s --iauc %s', cmd, IAUC_str);
+end
+
+if args.IAUC_at_peak
+    cmd = sprintf('%s --iauc_peak %s', cmd);
 end
 
 if ~isempty(args.init_maps_dir)
