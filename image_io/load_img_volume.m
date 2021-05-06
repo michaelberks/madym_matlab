@@ -45,10 +45,17 @@ end
 if exist('niftiread', 'file')
     try
         header = niftiinfo(volume_path);
-    catch
-        header = [];
+        volume = double(niftiread(volume_path)) / scale;
+    catch err
+        [~,~,ext] = fileparts(volume_path);
+        if ismember(lower(ext), {'', '.img', '.hdr'})
+            header = read_analyze_hdr(volume_path);
+            volume = double(read_analyze_img([],header)) / scale;
+        else
+            rethrow(err);            
+        end
     end
-    volume = double(niftiread(volume_path)) / scale;
+    
 else
     header = read_analyze_hdr(volume_path);
     volume = double(read_analyze_img([],header)) / scale;
