@@ -62,7 +62,7 @@ if ~nargin
 end
   
 % Unpack the arguments:
-args = u_packargs(varargin, 0, ... 
+args = u_packargs(varargin, 1, ... 
     'cmd_exe', [local_madym_root 'madym_T1'],...
     'cmd_exe_lite', [local_madym_root 'madym_T1_lite'],...
     'config', '',... Path to a config file to set default options
@@ -70,7 +70,7 @@ args = u_packargs(varargin, 0, ...
     'FAs', [],... FAs, either single vector used for all samples, or 2D array, 1 row per sample
     'signals', [],...Signals associated with each FA, 1 row per sample
   	'TR', [],... TR in msecs, required if directly fitting (otherwise will be taken from FA map headers);
-    'method', 'VFA',...T1 method to use to fit, see notes for options
+    'method', '',...T1 method to use to fit, see notes for options
     'B1_name', '',...Path to B1 correction map
     'B1_correction', false, ... Apply B1 correction
     'B1_scaling', NaN, ... Scaling factor to use with B1 map
@@ -103,8 +103,10 @@ end
 %Set up output directory
 deleteOutput = 0;
 if isempty(args.output_dir)
-    args.output_dir = tempdir;
-    deleteOutput = 1;
+    if isempty(args.config)
+        args.output_dir = tempdir;
+        deleteOutput = 1;
+    end
 elseif args.output_dir(end) ~= '\' && args.output_dir(end) ~= '/'
     args.output_dir = [args.output_dir '/'];
 end
@@ -140,10 +142,7 @@ if ~isempty(args.T1_vols) || ~isempty(args.config)
     else
         cmd = sprintf('%s --config %s', args.cmd_exe, args.config);
 
-        %Only override the method and output dir if they're not empty
-        if ~isempty(args.method)
-            cmd = sprintf('%s -T %s', cmd, args.method);
-        end
+        %Only override the inputs and output dir if they're not empty
         if ~isempty(args.T1_vols)
             cmd = sprintf('%s --T1_vols %s', cmd, fa_str);
         end
@@ -155,6 +154,10 @@ if ~isempty(args.T1_vols) || ~isempty(args.config)
     %Set the working dir
     if ~isempty(args.working_directory)
         cmd = sprintf('%s --cwd %s', cmd, args.working_directory);
+    end
+    
+    if ~isempty(args.method)
+        cmd = sprintf('%s -T %s', cmd, args.method);
     end
     
     if ~isempty(args.B1_name)
@@ -302,7 +305,7 @@ if use_lite
 end
 
 %At last.. we can run the command
-[status, result] = system(cmd);
+[status, result] = system(cmd, '-echo');
 
 if use_lite
     %Now load the output from calculate T1 lite and extract data to match this
