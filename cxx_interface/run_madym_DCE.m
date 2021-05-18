@@ -4,7 +4,7 @@ function [status, result] = run_madym_DCE(varargin)
 %   saving the model parameters and modelled concentration time-series also
 %   in Analyze format. The status and result of the system call to Madym is
 %   returned.
-%   [model_params, model_fit, error_codes, model_conc, dyn_conc] = ...
+%   [status, result] = ...
 %       run_madym_DCE(varargin)
 %
 % RUN_MADYM_DCE uses the U_PACKARGS interface function

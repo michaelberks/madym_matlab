@@ -1,13 +1,10 @@
 function [status, result] = run_madym_AIF(varargin)
-%RUN_MADYM wrapper function to call C++ tool Madym. Fits
-%   tracer-kinetic models to DCE time-series stored in Analyze format images,
-%   saving the model parameters and modelled concentration time-series also
-%   in Analyze format. The status and result of the system call to Madym is
-%   returned.
-%   [model_params, model_fit, error_codes, model_conc, dyn_conc] = ...
-%       run_madym(model, output_dir, varargin)
+%RUN_MADYM_AIF wrapper function to call C++ tool madym_AIF. Auto-detects an
+%arterial input function from time-series of DCE-MRI image volumes
+%   [status, result] = ...
+%       run_madym_AIF(varargin)
 %
-% RUN_MADYM uses the U_PACKARGS interface function
+% RUN_MADYM_AIF uses the U_PACKARGS interface function
 % and so arguments to the function may be passed as name-value pairs
 % or as a struct with fields with corresponding names. See below for
 % a full description of all options.
