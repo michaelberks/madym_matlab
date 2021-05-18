@@ -41,12 +41,11 @@ function [T1, M0, errorCodes, status, result] =...
 % Notes:
 %
 %   All T1 methods implemented in the main MaDym and MaDym-Lite C++ tools are
-%   available to fit. Currently only the variable flip angle method is available:
+%   available to fit. Currently variable flip-angle (VFA, including
+%   optional B1 correction) and inversion recovery (IR) available
 %
 %   Run: system([local_madym_root 'madym_T1 --help']); to see full set of
 %   input options to C++ tool
-% 
-%   "VFA"
 %
 % See also: RUN_MADYM, RUN_MADYM_LITE
 %
@@ -67,7 +66,7 @@ args = u_packargs(varargin, 1, ...
     'cmd_exe_lite', [local_madym_root 'madym_T1_lite'],...
     'config', '',... Path to a config file to set default options
     'T1_vols', [],... Cell array of variable flip angle file paths
-    'FAs', [],... FAs, either single vector used for all samples, or 2D array, 1 row per sample
+    'ScannerParams', [],... either single vector used for all samples, or 2D array, 1 row per sample
     'signals', [],...Signals associated with each FA, 1 row per sample
   	'TR', [],... TR in msecs, required if directly fitting (otherwise will be taken from FA map headers);
     'method', '',...T1 method to use to fit, see notes for options
@@ -96,7 +95,7 @@ clear varargin;
 
 %%
 if isempty(args.T1_vols) && isempty(args.config) && ...
-        (isempty(args.FAs) || isempty(args.signals))
+        (isempty(args.ScannerParams) || isempty(args.signals))
     error('Must supply either map names, or both FA and signal data');
 end
 
@@ -118,25 +117,24 @@ if ~isempty(args.T1_vols) || ~isempty(args.config)
     use_lite = false;
     
     %Set up FA map names
-    nFAs = length(args.T1_vols);
-    if nFAs
+    nScannerParams = length(args.T1_vols);
+    if nScannerParams
         fa_str = sprintf('%s', args.T1_vols{1});
-        for i_t = 2:nFAs
+        for i_t = 2:nScannerParams
             fa_str = sprintf('%s,%s', fa_str, args.T1_vols{i_t});
         end
     end
    
     %Check if a config file exists
     if isempty(args.config)
-        if ~nFAs
+        if ~nScannerParams
             error ('If no config file set, input T1 volumes must be set');
         end
         
         %Initialise command argument
         cmd = sprintf(...
-            '%s -T %s --T1_vols %s -o %s',...
+            '%s --T1_vols %s -o %s',...
             args.cmd_exe,...
-            args.method,...
             fa_str,...
             args.output_dir);
     else
@@ -214,23 +212,18 @@ if ~isempty(args.T1_vols) || ~isempty(args.config)
 else
     %Fit directly supplied FA and signal data using calculate_T1_lite
     use_lite = true;
-    [nSamples, nFAs] = size(args.signals);
+    [nSamples, nScannerParams] = size(args.signals);
     
     %In lite mode, B1 vals are appended to final column of signal data
     if args.B1_correction
-        nFAs = nFAs - 1;
+        nScannerParams = nScannerParams - 1;
     end
     
-    %Do error checking on required inputs
-    if nFAs < 3
-        error('Only %d FAs supplied, require at least 3 for T1 fitting',...
-            nFAs);
-    end
-    
-    if numel(args.FAs) == nFAs
-        args.FAs = repmat(args.FAs(:)', nSamples, 1);
-    elseif ~all(size(args.FAs)==[nSamples, nFAs])
-        error('Size of FAs array does not match size of signals array');
+    %Do error checking on required inputs 
+    if numel(args.ScannerParams) == nScannerParams
+        args.ScannerParams = repmat(args.ScannerParams(:)', nSamples, 1);
+    elseif ~all(size(args.ScannerParams)==[nSamples, nScannerParams])
+        error('Size of ScannerParams array does not match size of signals array');
     end
     
     %TR must be supplied
@@ -238,22 +231,25 @@ else
         error('You must supply a numeric TR value (in msecs) to fit directly to data');
     end
     
-    %Set up temporary files for FAs and signals (we'll hold
+    %Set up temporary files for ScannerParams and signals (we'll hold
     %off writing anything until we know this isn't a dummy run
     input_file = tempname;
     
     cmd = sprintf(...
-        '%s -T %s --data %s --n_T1 %d --TR %4.3f -o %s -O %s',...
+        '%s --data %s --n_T1 %d --TR %4.3f -o %s -O %s',...
         args.cmd_exe_lite,...
-        args.method,...
         input_file,...
-        nFAs,...
+        nScannerParams,...
         args.TR,...
         args.output_dir,...
         args.output_name);
     
     if args.B1_correction
         cmd = sprintf('%s --B1_correction', cmd);
+    end
+    
+    if ~isempty(args.method)
+        cmd = sprintf('%s -T %s', cmd, args.method);
     end
     
     %Set the working dir
@@ -265,15 +261,15 @@ else
     %of the software doesn't do the full range of error checks Madym proper
     %does. So chuck them out now and warn the user
     discard_samples = ...
-        any( isnan(args.FAs) |...
-        ~isfinite(args.FAs), 2) |...
+        any( isnan(args.ScannerParams) |...
+        ~isfinite(args.ScannerParams), 2) |...
         any(isnan(args.signals) |...
         ~isfinite(args.signals), 2);
     
     if any(discard_samples)
         warning(['Samples with NaN values found,'...
             'these will be set to zero for model-fitting']);
-        args.FAs(discard_samples,:) = 0;
+        args.ScannerParams(discard_samples,:) = 0;
         args.signals(discard_samples,:) = 0;
     end    
     
@@ -297,7 +293,7 @@ if use_lite
     %Write input values to a temporary file
     fid = fopen(input_file, 'wt');
     for i_row = 1:nSamples
-        fprintf(fid, '%6.5f ', args.FAs(i_row,:));
+        fprintf(fid, '%6.5f ', args.ScannerParams(i_row,:));
         fprintf(fid, '%6.5f ', args.signals(i_row,:));
         fprintf(fid, '\n');
     end
@@ -326,9 +322,9 @@ if use_lite
     end
 else
     if nargout
-        T1Path = [args.output_dir 'T1.hdr'];
-        M0Path = [args.output_dir 'M0.hdr'];
-        errorPath = [args.output_dir 'error_tracker.hdr'];
+        T1Path = [args.output_dir 'T1'];
+        M0Path = [args.output_dir 'M0'];
+        errorPath = [args.output_dir 'error_tracker'];
         T1 = load_img_volume(T1Path);
         M0 = load_img_volume(M0Path);
         try
@@ -364,7 +360,7 @@ function run_test()
     
     %First run this in data mode using calculate_T1_lite:    
     [T1_fit, M0_fit] = run_madym_T1(...
-        'FAs', FAs,... 
+        'ScannerParams', FAs,... 
         'signals', signals,...
         'TR', TR,... 
         'method', 'VFA',...
