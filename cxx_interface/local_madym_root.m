@@ -34,7 +34,15 @@ if empty_check && isempty(madym_root)
         'Add "setenv(''MADYM_ROOT'' your_local_root)" in your startup to set']);
 end
 
+%Deal with spaces by quote enclosing
+if any(madym_root == ' ')
+    %Get rid of existing quotes then add new
+    madym_root(madym_root=='"' | madym_root == '''') = '';
+    madym_root = ['"' madym_root '"'];
+end
+
 if ~isempty(madym_root) && madym_root(end) ~= '\' && madym_root(end) ~= '/'
     madym_root = [madym_root '/'];
 end
+
             
