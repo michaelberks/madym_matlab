@@ -37,4 +37,12 @@ end
 if ~isempty(madym_root) && madym_root(end) ~= '\' && madym_root(end) ~= '/'
     madym_root = [madym_root '/'];
 end
+
+%Deal with spaces by quote enclosing
+if any(madym_root == ' ')
+    %Get rid of existing quotes then add new
+    madym_root(madym_root=='"' | madym_root == '''') = '';
+    madym_root = ['"' madym_root '"'];
+end
+
             
