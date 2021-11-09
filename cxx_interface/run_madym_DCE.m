@@ -104,6 +104,7 @@ args = u_packargs(varargin, 1, ...
     'dyn_noise', false,...Set to use varying temporal noise in model fit
     'test_enhancement', false,...Set test-for-enhancement flag
     'max_iter', NaN,... Maximum number of iterations in model fit
+    'opt_type', '',... Type of optimisation to run
     'img_fmt_r', '',...Set image read format
     'img_fmt_w', '',...Set image write format
     'overwrite', false,...Set overwrite existing analysis in output dir
@@ -257,6 +258,10 @@ end
 
 if isfinite(args.max_iter)
     cmd = sprintf('%s --max_iter %d', cmd, args.max_iter);
+end
+
+if ~isempty(args.opt_type)
+    cmd = sprintf('%s --opt_type %s', cmd, args.opt_type);
 end
 
 if args.dyn_noise

@@ -127,11 +127,14 @@ args = u_packargs(varargin, 1, ...
     'init_params', [],... Initial values for model parameters to be optimised, either as single vector, or 2D array NSamples x N_params
     'fixed_params', [],...Parameters fixed to their initial values (ie not optimised)
     'fixed_values', [],... _values for fixed parameters (overrides default initial parameter values)"
+    'upper_bounds', [],...Upper bounds for each parameter during optimisation
+    'lower_bounds', [],...Lower bounds for each parameter during optimisation
     'relative_limit_params', [],...Parameters with relative limits on their optimisation bounds
     'relative_limit_values', [], ..._values for relative bounds, sets lower/upper bound as init param -/+ relative limit
 ...
     'dyn_noise_values', [],...Varying temporal noise in model fit
   	'max_iter', NaN,... Maximum number of iterations in model fit
+    'opt_type', '',... Type of optimisation to run
     'test_enhancement', false, ...Set test-for-enhancement flag
     'quiet', false,... Suppress output to stdout
     'working_directory', '',...Sets the current working directory for the system call, allows setting relative input paths for data
@@ -264,6 +267,10 @@ if isfinite(args.max_iter)
     cmd = sprintf('%s --max_iter %d', cmd, args.max_iter);
 end
 
+if ~isempty(args.opt_type)
+    cmd = sprintf('%s --opt_type %s', cmd, args.opt_type);
+end
+
 if args.test_enhancement
     cmd = sprintf('%s --test_enh', cmd);
 end
@@ -335,6 +342,22 @@ if ~isempty(args.fixed_params)
         end
         cmd = sprintf('%s --fixed_values %s', cmd, fixed_str);
     end
+end
+
+if ~isempty(args.upper_bounds)
+    upper_str = sprintf('%d', args.upper_bounds(1));
+    for i_t = 2:length(args.upper_bounds)
+        upper_str = sprintf('%s,%d', upper_str, args.upper_bounds(i_t));
+    end
+    cmd = sprintf('%s --upper_bounds %s', cmd, upper_str);
+end
+
+if ~isempty(args.lower_bounds)
+    lower_str = sprintf('%d', args.lower_bounds(1));
+    for i_t = 2:length(args.lower_bounds)
+        lower_str = sprintf('%s,%d', lower_str, args.lower_bounds(i_t));
+    end
+    cmd = sprintf('%s --lower_bounds %s', cmd, lower_str);
 end
 
 if ~isempty(args.relative_limit_params)
