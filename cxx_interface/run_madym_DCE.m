@@ -66,18 +66,18 @@ args = u_packargs(varargin, 1, ...
     'sequence_format', '',...Format for converting dynamic series index to string, eg %01u
     'sequence_start', NaN,...Start index of dynamic series
     'sequence_step', NaN,...Step size between indexes in dynamic series
-    'n_dyns', 0,...Number of dynamic sequence maps to load. If <=0, loads all maps in dynamic dir matching -dyn pattern
-    'input_Ct', false,...Flag specifying input dynamic sequence are concentration (not signal) maps
-    'output_Ct_sig', false,...Flag requesting concentration (derived from signal) are saved to output
-    'output_Ct_mod', false,...Flag requesting modelled concentration maps are saved to output
+    'n_dyns', NaN,...Number of dynamic sequence maps to load. If <=0, loads all maps in dynamic dir matching -dyn pattern
+    'input_Ct', NaN,...Flag specifying input dynamic sequence are concentration (not signal) maps
+    'output_Ct_sig', NaN,...Flag requesting concentration (derived from signal) are saved to output
+    'output_Ct_mod', NaN,...Flag requesting modelled concentration maps are saved to output
     'T1_name', '',...Path to T1 map
     'M0_name', '',...Path to M0 map
     'B1_name', '',...Path to B1 correction map
-    'B1_correction', false, ... Apply B1 correction
+    'B1_correction', NaN, ... Apply B1 correction
     'B1_scaling', NaN, ... Scaling factor to use with B1 map
     'r1_const', NaN,...Relaxivity constant of concentration in tissue (in ms)
     'TR', NaN, ... TR of dynamic sequence, only required if T1 method is IR
-    'M0_ratio', false,...Flag to use ratio method to scale signal instead of supplying M0
+    'M0_ratio', NaN,...Flag to use ratio method to scale signal instead of supplying M0
     'dose', NaN,...Concentration dose (mmole/kg)
     'injection_image', NaN,...Injection image
     'hct', NaN,...Haematocrit correction
@@ -89,7 +89,7 @@ args = u_packargs(varargin, 1, ...
     'aif_map', '',...Path to to mask from which AIF will be computed on the fly
     'pif_name', '',...Path to precomputed PIF if not deriving from AIF
     'IAUC_times', [],..._times (in s) at which to compute IAUC values
-    'IAUC_at_peak', false,...Flag requesting IAUC computed at peak signal
+    'IAUC_at_peak', NaN,...Flag requesting IAUC computed at peak signal
     'param_names', [],...Names of model parameters to be optimised, used to name the output parameter maps
     'init_params', [],...Initial values for model parameters to be optimised, either as single vector, or 2D array NSamples x N_params
     'fixed_params', [],...Parameters fixed to their initial values (ie not optimised)
@@ -101,16 +101,16 @@ args = u_packargs(varargin, 1, ...
     'residuals', '',... Path to existing residuals map
     'init_maps_dir', '',...Path to directory containing maps of parameters to initialise fit (overrides init_params)
     'init_map_params', [],...Parameters initialised from maps (if empty and init_maps_dir set, all params from maps)
-    'dyn_noise', false,...Set to use varying temporal noise in model fit
-    'test_enhancement', false,...Set test-for-enhancement flag
+    'dyn_noise', NaN,...Set to use varying temporal noise in model fit
+    'test_enhancement', NaN,...Set test-for-enhancement flag
     'max_iter', NaN,... Maximum number of iterations in model fit
     'opt_type', '',... Type of optimisation to run
     'img_fmt_r', '',...Set image read format
     'img_fmt_w', '',...Set image write format
-    'overwrite', false,...Set overwrite existing analysis in output dir
-    'no_audit', false,... Turn off audit log
-    'no_log', false,... Turn off propgram log
-    'quiet', false,... Suppress output to stdout
+    'overwrite', NaN,...Set overwrite existing analysis in output dir
+    'no_audit', NaN,... Turn off audit log
+    'no_log', NaN,... Turn off propgram log
+    'quiet', NaN,... Suppress output to stdout
     'program_log_name', '',...Program log file name
     'audit_name', '',...Audit file name
     'audit_dir', '',...Folder in which audit logs are saved
@@ -124,302 +124,140 @@ clear varargin;
 cmd = sprintf('%s ', args.cmd_exe);
     
 %Check if a config file exists
-if ~isempty(args.config)
-    cmd = sprintf('%s --config %s', cmd, args.config);   
-end
+cmd = add_option('string', cmd, '--config', args.config);
 
 %Set the working dir
-if ~isempty(args.working_directory)
-    cmd = sprintf('%s --cwd %s', cmd, args.working_directory);
-end
+cmd = add_option('string', cmd, '--cwd', args.working_directory);
 
 %Set TK model
-if ~isempty(args.model)
-    cmd = sprintf('%s -m %s', cmd, args.model);
-end
+cmd = add_option('string', cmd, '-m', args.model);
 
 %Set output directory
-if ~isempty(args.output_dir)
-    cmd = sprintf('%s -o %s', cmd, args.output_dir);
-end
+cmd = add_option('string', cmd, '-o', args.output_dir);
 
 %Set the dynamic names
-if ~isempty(args.dynamic_basename)
-    cmd = sprintf('%s -d %s', cmd, args.dynamic_basename);
-end
+cmd = add_option('string', cmd, '-d', args.dynamic_basename);
 
-if ~isempty(args.dyn_dir)
-    cmd = sprintf('%s --dyn_dir %s', cmd, args.dyn_dir);
-end
+cmd = add_option('string', cmd, '--dyn_dir', args.dyn_dir);
 
 %Set the format
-if ~isempty(args.sequence_format)
-    cmd = sprintf('%s --sequence_format %s', cmd, args.sequence_format);
-end
+cmd = add_option('string', cmd, '--sequence_format', args.sequence_format);
 
-if isfinite(args.sequence_start)
-    cmd = sprintf('%s --sequence_start %d', cmd, args.sequence_start);
-end
+cmd = add_option('int', cmd, '--sequence_start', args.sequence_start);
 
-if isfinite(args.sequence_step)
-    cmd = sprintf('%s --sequence_step %d', cmd, args.sequence_step);
-end
+cmd = add_option('int', cmd, '--sequence_step', args.sequence_step);
 
 %Set the number of dynamics
-if args.n_dyns
-    cmd = sprintf('%s --n_dyns %d', cmd, args.n_dyns);
-end
+cmd = add_option('int', cmd, '--n_dyns', args.n_dyns);
 
 %Set image formats
-if ~isempty(args.img_fmt_r)
-    cmd = sprintf('%s --img_fmt_r %s', cmd, args.img_fmt_r);
-end
-if ~isempty(args.img_fmt_w)
-    cmd = sprintf('%s --img_fmt_w %s', cmd, args.img_fmt_w);
-end
+cmd = add_option('string', cmd, '--img_fmt_r', args.img_fmt_r);
+
+cmd = add_option('string', cmd, '--img_fmt_w', args.img_fmt_w);
 
 %Now set any args that require option inputs
-if args.input_Ct
-    cmd = sprintf('%s --Ct', cmd);
-end
+cmd = add_option('bool', cmd, '--Ct', args.input_Ct);
 
 %Set T1 options
-if ~isempty(args.T1_name)
-    cmd = sprintf('%s --T1 %s', cmd, args.T1_name);
-end
+cmd = add_option('string', cmd, '--T1', args.T1_name);
 
-if ~isempty(args.M0_name)
-    cmd = sprintf('%s --M0 %s', cmd, args.M0_name);
-end
+cmd = add_option('string', cmd, '--M0', args.M0_name);
 
-if ~isempty(args.T1_method)
-    cmd = sprintf('%s --T1_method %s', cmd, args.T1_method);
-end 
+cmd = add_option('string', cmd, '--T1_method', args.T1_method); 
 
-if ~isempty(args.T1_vols)
-    %Set VFA files in the options string
-    t1_str = sprintf('%s', args.T1_vols{1});
-    for i_t = 2:length(args.T1_vols)
-        t1_str = sprintf('%s,%s', t1_str, args.T1_vols{i_t});
-    end
-    cmd = sprintf('%s --T1_vols %s', cmd, t1_str);
-end
+cmd = add_option('string_list', cmd, '--T1_vols', args.T1_vols);
 
-if isfinite(args.T1_noise)
-    cmd = sprintf('%s --T1_noise %5.4f', cmd, args.T1_noise);
-end
+cmd = add_option('float', cmd, '--T1_noise', args.T1_noise);
 
 
 %Set any other options required to convert signal to concentration
-if isfinite(args.r1_const)
-    cmd = sprintf('%s --r1 %4.3f', cmd, args.r1_const);
-end
+cmd = add_option('float', cmd, '--r1', args.r1_const);
 
-if isfinite(args.TR)
-    cmd = sprintf('%s --TR %4.3f', cmd, args.TR);
-end
+cmd = add_option('float', cmd, '--TR', args.TR);
 
-if isfinite(args.dose)
-    cmd = sprintf('%s -D %4.3f', cmd, args.dose);
-end
+cmd = add_option('float', cmd, '-D', args.dose);
 
-if args.M0_ratio
-    cmd = sprintf('%s --M0_ratio', cmd);
-end
+cmd = add_option('bool', cmd, '--M0_ratio', args.M0_ratio);
 
 %B1 correction options
-if ~isempty(args.B1_name)
-    cmd = sprintf('%s --B1 %s', cmd, args.B1_name);
-end    
-if args.B1_correction
-    cmd = sprintf('%s --B1_correction', cmd);
-end
-if isfinite(args.B1_scaling)
-    cmd = sprintf('%s --B1_scaling %d', cmd, args.B1_scaling);
-end    
+cmd = add_option('bool', cmd, '--B1', args.B1_name);   
+
+cmd = add_option('bool', cmd, '--B1_correction', args.B1_correction);
+
+cmd = add_option('float', cmd, '--B1_scaling', args.B1_scaling);    
 
 %Now go through all the other optional parameters, and if they've been set,
 %set the necessary option flag in the cmd string
-if args.no_optimise
-    cmd = sprintf('%s --no_opt', cmd);
-end
+cmd = add_option('bool', cmd, '--no_opt', args.no_optimise);
 
-if args.output_Ct_sig
-    cmd = sprintf('%s --Ct_sig', cmd);
-end
+cmd = add_option('bool', cmd, '--Ct_sig', args.output_Ct_sig);
 
-if args.output_Ct_mod
-    cmd = sprintf('%s --Ct_mod', cmd);
-end
+cmd = add_option('bool', cmd, '--Ct_mod', args.output_Ct_mod);
 
-if args.test_enhancement
-    cmd = sprintf('%s --test_enh', cmd);
-end
+cmd = add_option('bool', cmd, '--test_enh', args.test_enhancement);
 
-if isfinite(args.max_iter)
-    cmd = sprintf('%s --max_iter %d', cmd, args.max_iter);
-end
+cmd = add_option('int', cmd, '--max_iter', args.max_iter);
 
-if ~isempty(args.opt_type)
-    cmd = sprintf('%s --opt_type %s', cmd, args.opt_type);
-end
+cmd = add_option('string', cmd, '--opt_type', args.opt_type);
 
-if args.dyn_noise
-    cmd = sprintf('%s --dyn_noise', cmd);
-end
+cmd = add_option('bool', cmd, '--dyn_noise', args.dyn_noise);
 
-if args.overwrite
-    cmd = sprintf('%s --overwrite', cmd);
-end
+cmd = add_option('bool', cmd, '--overwrite', args.overwrite);
 
-if args.no_audit
-    cmd = sprintf('%s --no_audit', cmd);
-end
+cmd = add_option('bool', cmd, '--no_audit', args.no_audit);
 
-if args.no_log
-    cmd = sprintf('%s --no_log', cmd);
-end
+cmd = add_option('bool', cmd, '--no_log', args.no_log);
 
-if args.quiet
-    cmd = sprintf('%s --quiet', cmd);
-end
+cmd = add_option('bool', cmd, '--quiet', args.quiet);
 
-if isfinite(args.hct)
-    cmd = sprintf('%s -H %d', cmd, args.hct);
-end
+cmd = add_option('float', cmd, '-H', args.hct);
 
-if isfinite(args.injection_image)
-    cmd = sprintf('%s -i %d', cmd, args.injection_image);
-end
+cmd = add_option('int', cmd, '-i', args.injection_image);
 
-if isfinite(args.first_image)
-    cmd = sprintf('%s --first %d', cmd, args.first_image);
-end
+cmd = add_option('int', cmd, '--first', args.first_image);
 
-if isfinite(args.last_image)
-    cmd = sprintf('%s --last %d', cmd, args.last_image);
-end
+cmd = add_option('int', cmd, '--last', args.last_image);
 
-if ~isempty(args.roi_name)
-    cmd = sprintf('%s --roi %s', cmd, args.roi_name);
-end
+cmd = add_option('string', cmd, '--roi', args.roi_name);
 
-if ~isempty(args.residuals)
-    cmd = sprintf('%s --residuals %s', cmd, args.residuals);
-end
+cmd = add_option('string', cmd, '--residuals', args.residuals);
 
-if ~isempty(args.aif_name)
-    cmd = sprintf('%s --aif %s', cmd, args.aif_name);
-end
+cmd = add_option('string', cmd, '--aif', args.aif_name);
 
-if ~isempty(args.aif_map)
-    cmd = sprintf('%s --aif_map %s', cmd, args.aif_map);
-end
+cmd = add_option('string', cmd, '--aif_map', args.aif_map);
 
-if ~isempty(args.pif_name)
-    cmd = sprintf('%s --pif %s', cmd, args.pif_name);
-end
+cmd = add_option('string', cmd, '--pif', args.pif_name);
 
-if ~isempty(args.program_log_name)
-    cmd = sprintf('%s --program_log %s', cmd, args.program_log_name);
-end
+cmd = add_option('string', cmd, '--program_log', args.program_log_name);
 
-if ~isempty(args.audit_name)
-    cmd = sprintf('%s --audit %s', cmd, args.audit_name);
-end
+cmd = add_option('string', cmd, '--audit', args.audit_name);
 
-if ~isempty(args.audit_dir)
-    cmd = sprintf('%s --audit_dir %s', cmd, args.audit_dir);
-end
+cmd = add_option('string', cmd, '--audit_dir', args.audit_dir);
 
-if ~isempty(args.config_out)
-    cmd = sprintf('%s --config_out %s', cmd, args.config_out);
-end
+cmd = add_option('string', cmd, '--config_out', args.config_out);
 
-if ~isempty(args.error_name)
-    cmd = sprintf('%s -E %s', cmd, args.error_name);
-end
+cmd = add_option('string', cmd, '-E', args.error_name);
 
-if ~isempty(args.IAUC_times)
-    IAUC_str = sprintf('%3.2f', args.IAUC_times(1));
-    for i_t = 2:length(args.IAUC_times)
-        IAUC_str = sprintf('%s,%3.2f', IAUC_str, args.IAUC_times(i_t));
-    end
-    cmd = sprintf('%s --iauc %s', cmd, IAUC_str);
-end
+cmd = add_option('float_list', cmd, '--iauc', args.IAUC_times);
 
-if args.IAUC_at_peak
-    cmd = sprintf('%s --iauc_peak %s', cmd);
-end
+cmd = add_option('bool', cmd, '--iauc_peak', args.IAUC_at_peak);
 
-if ~isempty(args.init_maps_dir)
-    cmd = sprintf('%s --init_maps %s', cmd, init_maps_dir);
-end
-if ~isempty(args.init_params)
-    init_str = sprintf('%d', args.init_params(1));
-    for i_t = 2:length(args.init_params)
-        init_str = sprintf('%s,%d', init_str, args.init_params(i_t));
-    end
-    cmd = sprintf('%s --init_params %s', cmd, init_str);
-end
+cmd = add_option('string', cmd, '--init_maps', args.init_maps_dir);
 
-if ~isempty(args.param_names)
-    param_str = sprintf('%s', args.param_names{1});
-    for i_t = 2:length(args.param_names)
-        param_str = sprintf('%s,%d', param_str, args.param_names{i_t});
-    end
-    cmd = sprintf('%s --param_names %s', cmd, param_str);
-end
+cmd = add_option('float_list', cmd, '--init_params', args.init_params);
 
-if ~isempty(args.fixed_params)
-    fixed_str = sprintf('%d', args.fixed_params(1));
-    for i_t = 2:length(args.fixed_params)
-        fixed_str = sprintf('%s,%d', fixed_str, args.fixed_params(i_t));
-    end
-    cmd = sprintf('%s --fixed_params %s', cmd, fixed_str);
-    
-    if ~isempty(args.fixed_values)
-        fixed_str = sprintf('%5.4f', args.fixed_values(1));
-        for i_t = 2:length(args.fixed_values)
-            fixed_str = sprintf('%s,%5.4f', fixed_str, args.fixed_values(i_t));
-        end
-        cmd = sprintf('%s --fixed_values %s', cmd, fixed_str);
-    end
-end
+cmd = add_option('string_list', cmd, '--param_names', args.param_names);
 
-if ~isempty(args.upper_bounds)
-    upper_str = sprintf('%d', args.upper_bounds(1));
-    for i_t = 2:length(args.upper_bounds)
-        upper_str = sprintf('%s,%d', upper_str, args.upper_bounds(i_t));
-    end
-    cmd = sprintf('%s --upper_bounds %s', cmd, upper_str);
-end
+cmd = add_option('int_list', cmd, '--fixed_params', args.fixed_params);
+cmd = add_option('float_list', cmd, '--fixed_values', args.fixed_values);
 
-if ~isempty(args.lower_bounds)
-    lower_str = sprintf('%d', args.lower_bounds(1));
-    for i_t = 2:length(args.lower_bounds)
-        lower_str = sprintf('%s,%d', lower_str, args.lower_bounds(i_t));
-    end
-    cmd = sprintf('%s --lower_bounds %s', cmd, lower_str);
-end
+cmd = add_option('float_list', cmd, '--upper_bounds', args.upper_bounds);
+cmd = add_option('float_list', cmd, '--lower_bounds', args.lower_bounds);
 
-if ~isempty(args.relative_limit_params)
-    relative_str = sprintf('%d', args.relative_limit_params(1));
-    for i_t = 2:length(args.relative_limit_params)
-        relative_str = sprintf('%s,%d', ...
-            relative_str, args.relative_limit_params(i_t));
-    end
-    cmd = sprintf('%s --relative_limit_params %s', cmd, relative_str);
-    
-    if ~isempty(args.relative_limit_values)
-        relative_str = sprintf('%5.4f', args.relative_limit_values(1));
-        for i_t = 2:length(args.relative_limit_values)
-            relative_str = sprintf('%s,%5.4f',...
-                relative_str, args.relative_limit_values(i_t));
-        end
-        cmd = sprintf('%s --relative_limit_values %s', cmd, relative_str);
-    end
-end
+cmd = add_option('int_list', cmd, '--relative_limit_params', ...
+    args.relative_limit_params);
+cmd = add_option('float_list', cmd, '--relative_limit_values', ...
+    args.relative_limit_values);
 
 if args.dummy_run
     %Don't actually run anything, just print the command

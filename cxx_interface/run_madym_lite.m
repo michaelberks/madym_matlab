@@ -100,15 +100,15 @@ args = u_packargs(varargin, 1, ...
     'output_dir', [], ...Output path, will use temp dir if empty;
   	'output_name', 'madym_analysis.dat', ... Name of output file
     'dyn_times', [], ... Time associated with each dynamic signal (in mins), must be supplied if using population AIF
-    'input_Ct', 1, ... Flag specifying input dynamic sequence are concentration (not signal) maps
+    'input_Ct', true, ... Flag specifying input dynamic sequence are concentration (not signal) maps
     'output_Ct_sig', nargout > 5,... Flag requesting concentration (derived from signal) are saved to output
     'output_Ct_mod', nargout > 4, ...Flag requesting modelled concentration maps are saved to output
-    'no_optimise', 0, ...Flag to switch off optimising, will just fit initial parameters values for model
-    'B1_correction', false, ... Apply B1 correction
+    'no_optimise', NaN, ...Flag to switch off optimising, will just fit initial parameters values for model
+    'B1_correction', NaN, ... Apply B1 correction
 ... The below are all only required if we're converting from signals
     'T1', [], ...Baseline T1 values (in ms)
     'M0', [], ...Baseline M0 values, required if not using ratio method
- 	'TR', 0, ... TR of dynamic series (in ms), must be >0 if converting signals
+ 	'TR', NaN, ... TR of dynamic series (in ms), must be >0 if converting signals
     'FA', NaN, ... Flip angle of dynamic series (degrees), must be set if converting signals
     'r1_const', NaN, ...Relaxivity constant of concentration in tissue (in ms)
     'M0_ratio', true, ... Flag to use ratio method to scale signal instead of supplying M0
@@ -123,7 +123,6 @@ args = u_packargs(varargin, 1, ...
   	'pif_name', [], ... Path to precomputed PIF if not deriving from AIF
 ...
     'IAUC_times', [60 90 120],... "_times (in s) at which to compute IAUC values
-    'IAUC_at_peak', false,...Flag requesting IAUC computed at peak signal
     'init_params', [],... Initial values for model parameters to be optimised, either as single vector, or 2D array NSamples x N_params
     'fixed_params', [],...Parameters fixed to their initial values (ie not optimised)
     'fixed_values', [],... _values for fixed parameters (overrides default initial parameter values)"
@@ -135,8 +134,8 @@ args = u_packargs(varargin, 1, ...
     'dyn_noise_values', [],...Varying temporal noise in model fit
   	'max_iter', NaN,... Maximum number of iterations in model fit
     'opt_type', '',... Type of optimisation to run
-    'test_enhancement', false, ...Set test-for-enhancement flag
-    'quiet', false,... Suppress output to stdout
+    'test_enhancement', NaN, ...Set test-for-enhancement flag
+    'quiet', NaN,... Suppress output to stdout
     'working_directory', '',...Sets the current working directory for the system call, allows setting relative input paths for data
     'dummy_run', false ...Don't run any thing, just print the cmd we'll run to inspect
     );
@@ -201,180 +200,89 @@ cmd = sprintf(...
     args.output_name);
 
 %Set the working dir
-if ~isempty(args.working_directory)
-    cmd = sprintf('%s --cwd %s', cmd, args.working_directory);
-end
+cmd = add_option('string', cmd, '--cwd', args.working_directory);
 
 %Now set any args that require option inputs
 if args.input_Ct
     cmd = sprintf('%s --Ct', cmd);
     
 else %Below are only needed if input is signals
-    if args.TR
-        cmd = sprintf('%s --TR %4.3f', cmd, args.TR);
-    end
+    cmd = add_option('float', cmd, '--TR', args.TR);
 
-    if ~isnan(args.FA)
-        cmd = sprintf('%s --FA %4.3f', cmd, args.FA);
-    end
+    cmd = add_option('float', cmd, '--FA', args.FA);
 
-    if isfinite(args.r1_const)
-        cmd = sprintf('%s --r1 %4.3f', cmd, args.r1_const);
-    end
+    cmd = add_option('float', cmd, '--r1', args.r1_const);
 
-    if args.M0_ratio
-        cmd = sprintf('%s --M0_ratio', cmd);
-    end
+    cmd = add_option('bool', cmd, '--M0_ratio', args.M0_ratio);
 end
 
-if isfinite(args.dose)
-    cmd = sprintf('%s -D %5.4f', cmd, args.dose);
-end
+cmd = add_option('float', cmd, '-D', args.dose);
 
-if isfinite(args.hct)
-    cmd = sprintf('%s -H %5.4f', cmd, args.hct);
-end
+cmd = add_option('float', cmd, '-H', args.hct);
 
-if isfinite(args.injection_image)
-    cmd = sprintf('%s -i %d', cmd, args.injection_image);
-end
+cmd = add_option('int', cmd, '-i', args.injection_image);
 
-if isfinite(args.first_image)
-    cmd = sprintf('%s --first %d', cmd, args.first_image);
-end
+cmd = add_option('int', cmd, '--first', args.first_image);
 
-if isfinite(args.last_image)
-    cmd = sprintf('%s --last %d', cmd, args.last_image);
-end
+cmd = add_option('int', cmd, '--last', args.last_image);
 
-if args.output_Ct_sig
-    cmd = sprintf('%s --Ct_sig', cmd);
-end
+cmd = add_option('bool', cmd, '--Ct_sig', args.output_Ct_sig);
 
-if args.output_Ct_mod
-    cmd = sprintf('%s --Ct_mod', cmd);
-end
+cmd = add_option('bool', cmd, '--Ct_mod', args.output_Ct_mod);
 
-if args.no_optimise
-    cmd = sprintf('%s --no_opt', cmd);
-end
+cmd = add_option('bool', cmd, '--no_opt', args.no_optimise);
 
-if args.B1_correction
-    cmd = sprintf('%s --B1_correction', cmd);
-end
+cmd = add_option('bool', cmd, '--B1_correction', args.B1_correction);
 
-if isfinite(args.max_iter)
-    cmd = sprintf('%s --max_iter %d', cmd, args.max_iter);
-end
+cmd = add_option('int', cmd, '--max_iter', args.max_iter);
 
-if ~isempty(args.opt_type)
-    cmd = sprintf('%s --opt_type %s', cmd, args.opt_type);
-end
+cmd = add_option('string', cmd, '--opt_type', args.opt_type);
 
-if args.test_enhancement
-    cmd = sprintf('%s --test_enh', cmd);
-end
+cmd = add_option('bool', cmd, '--test_enh', args.test_enhancement);
 
-if args.quiet
-    cmd = sprintf('%s --quiet', cmd);
-end
+cmd = add_option('bool', cmd, '--quiet', args.quiet);
 
-if ~isempty(args.aif_name)
-    cmd = sprintf('%s --aif %s', cmd, args.aif_name);
-end
+cmd = add_option('string', cmd, '--aif', args.aif_name);
 
-if ~isempty(args.pif_name)
-    cmd = sprintf('%s --pif %s', cmd, args.pif_name);
-end
+cmd = add_option('string', cmd, '--pif', args.pif_name);
 
 if ~isempty(args.dyn_times)
     %Get a name for the temporary file we'll write times to (we'll hold
     %off writing anything until we know this isn't a dummy run
     dyn_times_file = tempname;
-    cmd = sprintf('%s -t %s', cmd, dyn_times_file);
+    cmd = add_option('string', cmd, '-t', dyn_times_file);
 end
 
 if ~isempty(args.dyn_noise_values)
     %Get a name for the temporary file we'll write noise to (we'll hold
     %off writing anything until we know this isn't a dummy run
     dynNoise_file = tempname;
-    cmd = sprintf('%s --dyn_noise %s', cmd, dynNoise_file);
+    cmd = add_option('string', cmd, '--dyn_noise', dynNoise_file);
 end
 
-if ~isempty(args.IAUC_times)
-    IAUC_str = sprintf('%3.2f', args.IAUC_times(1));
-    for i_t = 2:length(args.IAUC_times)
-        IAUC_str = sprintf('%s,%3.2f', IAUC_str, args.IAUC_times(i_t));
-    end
-    cmd = sprintf('%s --iauc %s', cmd, IAUC_str);
-end
-
-if args.IAUC_at_peak
-    cmd = sprintf('%s --iauc_peak %s', cmd);
-end
+cmd = add_option('float_list', cmd, '--iauc', args.IAUC_times);
 
 load_params = false;
 if ~isempty(args.init_params)
     if nSamples > 1 && size(args.init_params,1) == nSamples
         input_params_file = tempname;
         load_params = true;
-        cmd = sprintf('%s --init_params_file %s', cmd, input_params_file);
+        cmd = add_option('string', cmd, '--init_params_file', input_params_file);
     else
-        init_str = sprintf('%5.4f', args.init_params(1));
-        for i_t = 2:length(args.init_params)
-            init_str = sprintf('%s,%5.4f', init_str, args.init_params(i_t));
-        end
-        cmd = sprintf('%s --init_params %s', cmd, init_str);
+        cmd = add_option('float_list', cmd, '--init_params', args.init_params);
     end
 end
 
-if ~isempty(args.fixed_params)
-    fixed_str = sprintf('%d', args.fixed_params(1));
-    for i_t = 2:length(args.fixed_params)
-        fixed_str = sprintf('%s,%d', fixed_str, args.fixed_params(i_t));
-    end
-    cmd = sprintf('%s --fixed_params %s', cmd, fixed_str);
-    
-    if ~isempty(args.fixed_values)
-        fixed_str = sprintf('%5.4f', args.fixed_values(1));
-        for i_t = 2:length(args.fixed_values)
-            fixed_str = sprintf('%s,%5.4f', fixed_str, args.fixed_values(i_t));
-        end
-        cmd = sprintf('%s --fixed_values %s', cmd, fixed_str);
-    end
-end
+cmd = add_option('int_list', cmd, '--fixed_params', args.fixed_params);
+cmd = add_option('float_list', cmd, '--fixed_values', args.fixed_values);
 
-if ~isempty(args.upper_bounds)
-    upper_str = sprintf('%d', args.upper_bounds(1));
-    for i_t = 2:length(args.upper_bounds)
-        upper_str = sprintf('%s,%d', upper_str, args.upper_bounds(i_t));
-    end
-    cmd = sprintf('%s --upper_bounds %s', cmd, upper_str);
-end
+cmd = add_option('float_list', cmd, '--upper_bounds', args.upper_bounds);
+cmd = add_option('float_list', cmd, '--lower_bounds', args.lower_bounds);
 
-if ~isempty(args.lower_bounds)
-    lower_str = sprintf('%d', args.lower_bounds(1));
-    for i_t = 2:length(args.lower_bounds)
-        lower_str = sprintf('%s,%d', lower_str, args.lower_bounds(i_t));
-    end
-    cmd = sprintf('%s --lower_bounds %s', cmd, lower_str);
-end
-
-if ~isempty(args.relative_limit_params)
-    relative_str = sprintf('%d', args.relative_limit_params(1));
-    for i_t = 2:length(args.relative_limit_params)
-        relative_str = sprintf('%s,%d', relative_str, args.relative_limit_params(i_t));
-    end
-    cmd = sprintf('%s --relative_limit_params %s', cmd, relative_str);
-    
-    if ~isempty(args.relative_limit_values)
-        relative_str = sprintf('%5.4f', args.relative_limit_values(1));
-        for i_t = 2:length(args.relative_limit_values)
-            relative_str = sprintf('%s,%5.4f', relative_str, args.relative_limit_values(i_t));
-        end
-        cmd = sprintf('%s --relative_limit_values %s', cmd, relative_str);
-    end
-end
+cmd = add_option('int_list', cmd, '--relative_limit_params', ...
+    args.relative_limit_params);
+cmd = add_option('float_list', cmd, '--relative_limit_values', ...
+    args.relative_limit_values);
 
 if args.dummy_run
     %Don't actually run anything, just print the command
@@ -435,7 +343,7 @@ outputData = load(fullOutPath);
 error_codes = outputData(:,1:2);
 model_fit = outputData(:,3);
 
-n_iauc = length(args.IAUC_times) + (args.IAUC_at_peak > 0);
+n_iauc = length(args.IAUC_times);% + (args.IAUC_at_peak > 0);
 iauc = outputData(:, 3 + (1:n_iauc));
 
 %Workout which columns hold parameter values
@@ -471,6 +379,8 @@ end
 if deleteOutput
     delete(fullOutPath);
 end
+
+%--------------------------------------------------------------------------
 
 %%
 %Test function to run if no inputs

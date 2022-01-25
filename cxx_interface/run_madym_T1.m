@@ -71,7 +71,7 @@ args = u_packargs(varargin, 1, ...
   	'TR', [],... TR in msecs, required if directly fitting (otherwise will be taken from FA map headers);
     'method', '',...T1 method to use to fit, see notes for options
     'B1_name', '',...Path to B1 correction map
-    'B1_correction', false, ... Apply B1 correction
+    'B1_correction', NaN, ... Apply B1 correction
     'B1_scaling', NaN, ... Scaling factor to use with B1 map
     'output_dir', [], ...Output path, will use temp dir if empty;
   	'output_name', 'madym_analysis.dat', ... Name of output file
@@ -80,16 +80,16 @@ args = u_packargs(varargin, 1, ...
     'error_name', [],... Name of error codes image
     'img_fmt_r', '',...Set image read format
     'img_fmt_w', '',...Set image write format
-    'no_audit', false,... Turn off audit log
-    'no_log', false,... Turn off propgram log
-    'quiet', false,... Suppress output to stdout
+    'no_audit', NaN,... Turn off audit log
+    'no_log', NaN,... Turn off propgram log
+    'quiet', NaN,... Suppress output to stdout
     'program_log_name', '',...Program log file name
     'audit_name', '',...Audit file name
     'audit_dir', '',...Folder in which audit logs are saved
     'config_out', '',...Name of output config file
-    'overwrite', 0,...Set overwrite existing analysis in output dir ON
+    'overwrite', NaN,...Set overwrite existing analysis in output dir ON
     'working_directory', '',...Sets the current working directory for the system call, allows setting relative input paths for data
-    'dummy_run', 0 ...Don't run any thing, just print the cmd we'll run to inspect
+    'dummy_run', false ...Don't run any thing, just print the cmd we'll run to inspect
     );
 clear varargin;
 
@@ -116,98 +116,47 @@ if ~isempty(args.T1_vols) || ~isempty(args.config)
     %Use madym_T1 to fit full volumes
     use_lite = false;
     
-    %Set up FA map names
-    nScannerParams = length(args.T1_vols);
-    if nScannerParams
-        fa_str = sprintf('%s', args.T1_vols{1});
-        for i_t = 2:nScannerParams
-            fa_str = sprintf('%s,%s', fa_str, args.T1_vols{i_t});
-        end
-    end
-   
-    %Check if a config file exists
-    if isempty(args.config)
-        if ~nScannerParams
-            error ('If no config file set, input T1 volumes must be set');
-        end
-        
-        %Initialise command argument
-        cmd = sprintf(...
-            '%s --T1_vols %s -o %s',...
-            args.cmd_exe,...
-            fa_str,...
-            args.output_dir);
-    else
-        cmd = sprintf('%s --config %s', args.cmd_exe, args.config);
-
-        %Only override the inputs and output dir if they're not empty
-        if ~isempty(args.T1_vols)
-            cmd = sprintf('%s --T1_vols %s', cmd, fa_str);
-        end
-        if ~isempty(args.output_dir)
-            cmd = sprintf('%s -o %s', cmd, args.output_dir);
-        end
-    end
-      
-    %Set the working dir
-    if ~isempty(args.working_directory)
-        cmd = sprintf('%s --cwd %s', cmd, args.working_directory);
-    end
+    cmd = sprintf('%s', args.cmd_exe);
     
-    if ~isempty(args.method)
-        cmd = sprintf('%s -T %s', cmd, args.method);
-    end
+    cmd = add_option('string', cmd, '--config', args.config);
     
-    if ~isempty(args.B1_name)
-        cmd = sprintf('%s --B1 %s', cmd, args.B1_name);
-    end    
-    if isfinite(args.B1_scaling)
-        cmd = sprintf('%s --B1_scaling %d', cmd, args.B1_scaling);
-    end 
-    if ~isempty(args.img_fmt_r)
-        cmd = sprintf('%s --img_fmt_r %s', cmd, args.img_fmt_r);
-    end
-    if ~isempty(args.img_fmt_w)
-        cmd = sprintf('%s --img_fmt_w %s', cmd, args.img_fmt_w);
-    end
-    if ~isempty(args.error_name)
-        cmd = sprintf('%s -E %s', cmd, args.error_name);
-    end
-    if ~isempty(args.roi_name)
-        cmd = sprintf('%s --roi %s', cmd, args.roi_name);
-    end
-    if args.no_audit
-        cmd = sprintf('%s --no_audit', cmd);
-    end
+    cmd = add_option('string', cmd, '--cwd', args.working_directory);
+    
+    cmd = add_option('string', cmd, '-T', args.method);
+    
+    cmd = add_option('string_list', cmd, '--T1_vols', args.T1_vols);
+    
+    cmd = add_option('string', cmd, '-o', args.output_dir);
+    
+    cmd = add_option('string', cmd, '--B1', args.B1_name);  
+    
+    cmd = add_option('float', cmd, '--B1_scaling', args.B1_scaling);
+    
+    cmd = add_option('string', cmd, '--img_fmt_r', args.img_fmt_r);
+    
+    cmd = add_option('string', cmd, '--img_fmt_w', args.img_fmt_w);
+    
+    cmd = add_option('string', cmd, '-E', args.error_name);
+    
+    cmd = add_option('string', cmd, '--roi', args.roi_name);
+    
+    cmd = add_option('float', cmd, '--T1_noise', args.noise_thresh);
+    
+    cmd = add_option('bool', cmd, '--no_audit', args.no_audit);
 
-    if args.no_log
-        cmd = sprintf('%s --no_log', cmd);
-    end
+    cmd = add_option('bool', cmd, '--no_log', args.no_log);
 
-    if args.quiet
-        cmd = sprintf('%s --quiet', cmd);
-    end
-    if ~isempty(args.program_log_name)
-        cmd = sprintf('%s --program_log %s', cmd, args.program_log_name);
-    end
+    cmd = add_option('bool', cmd, '--quiet', args.quiet);
+    
+    cmd = add_option('string', cmd, '--program_log', args.program_log_name);
 
-    if ~isempty(args.audit_name)
-        cmd = sprintf('%s --audit %s', cmd, args.audit_name);
-    end
+    cmd = add_option('string', cmd, '--audit', args.audit_name);
 
-    if ~isempty(args.audit_dir)
-        cmd = sprintf('%s --audit_dir %s', cmd, args.audit_dir);
-    end
+    cmd = add_option('string', cmd, '--audit_dir', args.audit_dir);
 
-    if ~isempty(args.config_out)
-        cmd = sprintf('%s --config_out %s', cmd, args.config_out);
-    end
-    if args.overwrite
-        cmd = sprintf('%s --overwrite', cmd);
-    end
-    if isfinite(args.noise_thresh)
-        cmd = sprintf('%s --T1_noise %5.4f', cmd, args.noise_thresh);
-    end
+    cmd = add_option('string', cmd, '--config_out', args.config_out);
+    
+    cmd = add_option('bool', cmd, '--overwrite', args.overwrite);   
     
 else
     %Fit directly supplied FA and signal data using calculate_T1_lite
@@ -215,7 +164,7 @@ else
     [nSamples, nScannerParams] = size(args.signals);
     
     %In lite mode, B1 vals are appended to final column of signal data
-    if args.B1_correction
+    if isfinite(args.B1_correction) && args.B1_correction
         nScannerParams = nScannerParams - 1;
     end
     
@@ -244,18 +193,11 @@ else
         args.output_dir,...
         args.output_name);
     
-    if args.B1_correction
-        cmd = sprintf('%s --B1_correction', cmd);
-    end
+    cmd = add_option('bool', cmd, '--B1_correction', args.B1_correction);
     
-    if ~isempty(args.method)
-        cmd = sprintf('%s -T %s', cmd, args.method);
-    end
+    cmd = add_option('string', cmd, '-T', args.method);
     
-    %Set the working dir
-    if ~isempty(args.working_directory)
-        cmd = sprintf('%s --cwd %s', cmd, args.working_directory);
-    end
+    cmd = add_option('string', cmd, '--cwd', args.working_directory);
     
     %Check for bad samples, these can screw up Madym as the lite version
     %of the software doesn't do the full range of error checks Madym proper
