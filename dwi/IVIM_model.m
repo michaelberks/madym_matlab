@@ -62,5 +62,5 @@ D_star = D_star(:);
 
 signals = S0 .* (...
     (1 - f) .* exp(-D * B_values) +...
-    f .* exp(-D_star .* B_values));
+    f .* exp(-D_star * B_values));
 
