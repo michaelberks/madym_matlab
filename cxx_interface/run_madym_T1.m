@@ -197,8 +197,6 @@ else
     
     cmd = add_option('string', cmd, '-T', args.method);
     
-    cmd = add_option('string', cmd, '--cwd', args.working_directory);
-    
     %Check for bad samples, these can screw up Madym as the lite version
     %of the software doesn't do the full range of error checks Madym proper
     %does. So chuck them out now and warn the user

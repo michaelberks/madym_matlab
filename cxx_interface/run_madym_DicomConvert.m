@@ -61,6 +61,7 @@ args = u_packargs(varargin, 1, ...
     'make_dyn_mean', NaN, ...,Make temporal mean of dynamic images
     'flip_x', NaN, ...,Flip dicom slices horizontally before copying into 3D image volume
     'flip_y', NaN, ...,Flip dicom slices vertically before copying into 3D image volume
+    'flip_z', NaN, ...,Reverse order of lsices in 3D image volume
     'scale_tag', '', ...Dicom tag key (group,element) for rescale slope, in hexideciaml form - for Philips this is (0x2005, 0x100e)
     'offset_tag', '', ...Dicom tag key (group,element) for rescale intercept, in hexideciaml form - for Philips this is (0x2005, 0x100d)
     'dicom_scale', NaN, ...,Additional scaling factor applied to the dicom data
@@ -138,6 +139,8 @@ cmd = add_option('bool', cmd, '--make_dyn_mean', args.make_dyn_mean);
 cmd = add_option('bool', cmd, '--flip_x', args.flip_x);
 
 cmd = add_option('bool', cmd, '--flip_y', args.flip_y);
+
+cmd = add_option('bool', cmd, '--flip_z', args.flip_z);
 
 cmd = add_option('string', cmd, '--scale_tag', args.scale_tag);
 

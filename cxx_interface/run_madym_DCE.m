@@ -103,6 +103,7 @@ args = u_packargs(varargin, 1, ...
     'init_map_params', [],...Parameters initialised from maps (if empty and init_maps_dir set, all params from maps)
     'dyn_noise', NaN,...Set to use varying temporal noise in model fit
     'test_enhancement', NaN,...Set test-for-enhancement flag
+    'voxel_size_warn_only', NaN,... If set, only logs warning when voxel sizes don't match
     'max_iter', NaN,... Maximum number of iterations in model fit
     'opt_type', '',... Type of optimisation to run
     'img_fmt_r', '',...Set image read format
@@ -244,6 +245,8 @@ cmd = add_option('bool', cmd, '--iauc_peak', args.IAUC_at_peak);
 
 cmd = add_option('string', cmd, '--init_maps', args.init_maps_dir);
 
+cmd = add_option('int_list', cmd, '--init_map_params', args.init_map_params);
+
 cmd = add_option('float_list', cmd, '--init_params', args.init_params);
 
 cmd = add_option('string_list', cmd, '--param_names', args.param_names);
@@ -258,6 +261,9 @@ cmd = add_option('int_list', cmd, '--relative_limit_params', ...
     args.relative_limit_params);
 cmd = add_option('float_list', cmd, '--relative_limit_values', ...
     args.relative_limit_values);
+
+cmd = add_option('bool', cmd, '--voxel_size_warn_only',...
+    args.voxel_size_warn_only);
 
 if args.dummy_run
     %Don't actually run anything, just print the command

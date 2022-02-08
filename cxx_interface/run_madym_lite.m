@@ -123,6 +123,7 @@ args = u_packargs(varargin, 1, ...
   	'pif_name', [], ... Path to precomputed PIF if not deriving from AIF
 ...
     'IAUC_times', [60 90 120],... "_times (in s) at which to compute IAUC values
+    'IAUC_at_peak', 0,... Flag to compute IAUC at peak
     'init_params', [],... Initial values for model parameters to be optimised, either as single vector, or 2D array NSamples x N_params
     'fixed_params', [],...Parameters fixed to their initial values (ie not optimised)
     'fixed_values', [],... _values for fixed parameters (overrides default initial parameter values)"
@@ -136,7 +137,6 @@ args = u_packargs(varargin, 1, ...
     'opt_type', '',... Type of optimisation to run
     'test_enhancement', NaN, ...Set test-for-enhancement flag
     'quiet', NaN,... Suppress output to stdout
-    'working_directory', '',...Sets the current working directory for the system call, allows setting relative input paths for data
     'dummy_run', false ...Don't run any thing, just print the cmd we'll run to inspect
     );
 clear varargin;
@@ -199,22 +199,16 @@ cmd = sprintf(...
     args.output_dir,...
     args.output_name);
 
-%Set the working dir
-cmd = add_option('string', cmd, '--cwd', args.working_directory);
-
 %Now set any args that require option inputs
-if args.input_Ct
-    cmd = sprintf('%s --Ct', cmd);
+cmd = add_option('bool', cmd, '--Ct', args.input_Ct);
     
-else %Below are only needed if input is signals
-    cmd = add_option('float', cmd, '--TR', args.TR);
+cmd = add_option('float', cmd, '--TR', args.TR);
 
-    cmd = add_option('float', cmd, '--FA', args.FA);
+cmd = add_option('float', cmd, '--FA', args.FA);
 
-    cmd = add_option('float', cmd, '--r1', args.r1_const);
+cmd = add_option('float', cmd, '--r1', args.r1_const);
 
-    cmd = add_option('bool', cmd, '--M0_ratio', args.M0_ratio);
-end
+cmd = add_option('bool', cmd, '--M0_ratio', args.M0_ratio);
 
 cmd = add_option('float', cmd, '-D', args.dose);
 
@@ -261,6 +255,8 @@ if ~isempty(args.dyn_noise_values)
 end
 
 cmd = add_option('float_list', cmd, '--iauc', args.IAUC_times);
+
+cmd = add_option('bool', cmd, '--iauc_peak', args.IAUC_at_peak);
 
 load_params = false;
 if ~isempty(args.init_params)
@@ -343,7 +339,7 @@ outputData = load(fullOutPath);
 error_codes = outputData(:,1:2);
 model_fit = outputData(:,3);
 
-n_iauc = length(args.IAUC_times);% + (args.IAUC_at_peak > 0);
+n_iauc = length(args.IAUC_times) + (args.IAUC_at_peak > 0);
 iauc = outputData(:, 3 + (1:n_iauc));
 
 %Workout which columns hold parameter values

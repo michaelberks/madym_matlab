@@ -31,6 +31,7 @@ fprintf('*****************************************************\n');
 run_madym_lite();
 run_madym();
 run_madym_T1();
+run_madym_DWI_lite();
 
 if test_level > 1
     %Apply extended tests

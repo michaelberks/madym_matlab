@@ -39,6 +39,8 @@ args = u_packargs(varargin, 1, ...
     'T1_method', '',...T1 method to use to fit, see notes for options
     'T1_vols', [], ...,File names of generated signal volumes to from which baseline T1 is mapped
     'T1_dir', '', ...Folder to which T1 input volumes saved
+    'DWI_vols', [], ...,File names of generated signal volumes for DWI models
+    'DWI_dir', '', ...Folder to which DWI input volumes saved
     'dynamic_basename', '', ...Template name for dynamic sequences eg. dynamic/dyn_
     'dyn_dir', '',...Dir to dynamic series (can be included in dynamic basename)
     'sequence_format', '', ...Format for converting dynamic series index to string, eg %01u
@@ -51,6 +53,8 @@ args = u_packargs(varargin, 1, ...
     'TR', NaN, ... TR of dynamic series (in ms)
     'FA', NaN, ... Flip angle of dynamic series (degrees)
     'VFAs', [], ... Flip angle of T1 inputs (degrees)
+    'TIs', [], ... Inversion times of T1 inputs (msecs)
+    'Bvalues', [], ... B-values of DWI model inputs
     'dyn_times', [], ... Time associated with each dynamic signal (in mins), must be supplied if using population AIF
     'working_directory', '', ...Sets the current working directory for the system call, allows setting relative input paths for data
     'dummy_run', false); %Don't run any thing, just print the cmd we'll run to inspect
@@ -68,6 +72,10 @@ cmd = add_option('string', cmd, '--T1_method', args.T1_method);
 cmd = add_option('string_list', cmd, '--T1_vols', args.T1_vols);
 
 cmd = add_option('string', cmd, '--T1_dir', args.T1_dir);
+
+cmd = add_option('string_list', cmd, '--DWI_vols', args.DWI_vols);
+
+cmd = add_option('string', cmd, '--DWI_dir', args.DWI_dir);
 
 cmd = add_option('string', cmd, '-d', args.dynamic_basename);
 
@@ -93,6 +101,10 @@ cmd = add_option('float', cmd, '--FA', args.FA);
 
 cmd = add_option('float_list', cmd, '--VFAs', args.VFAs);
 
+cmd = add_option('float_list', cmd, '--TIs', args.TIs);
+
+cmd = add_option('float_list', cmd, '--Bvalues', args.Bvalues);
+
 if ~isempty(args.dyn_times)
     %Get a name for the temporary file we'll write times to (we'll hold
     %off writing anything until we know this isn't a dummy run
@@ -100,7 +112,7 @@ if ~isempty(args.dyn_times)
     fid = fopen(dyn_times_file, 'wt');
     fprintf(fid, '%6.5f ', args.dyn_times(:));
     fclose(fid);
-    cmd = sprintf('%s -t %s', cmd, dyn_times_file);
+    cmd = add_option('string', cmd, '-t', dyn_times_file);
 end
 
 if args.dummy_run
