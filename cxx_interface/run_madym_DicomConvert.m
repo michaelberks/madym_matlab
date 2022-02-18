@@ -112,7 +112,7 @@ cmd = add_option('string', cmd, '--T1_dir', args.T1_dir);
 
 cmd = add_option('string', cmd, '--dicom_dir', args.dicom_dir);
 
-cmd = add_option('string', cmd, '--dicom_series_file', args.dicom_series_file);
+cmd = add_option('string', cmd, '--dicom_series', args.dicom_series_file);
 
 cmd = add_option('int_list', cmd, '--T1_series', args.T1_input_series);
 
