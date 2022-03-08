@@ -52,6 +52,8 @@ args = u_packargs(varargin, 1, ...
     'dyn_series', NaN, ...,Index of the dicom series for the dynamic DCE time-series
     'single_series', NaN, ...,Index of the dicom series for converting a generic single volume
     'dicom_filter', '', ...File filter for dicom sort (eg IM_)
+    'slice_filter_tag', '',...Custom Dicom tag key (group,element) for filtering slices against a user set value
+    'slice_filter_match_value', '',...Value of attribute set by slice_filter_tag that slices must match to be included
     'vol_name', '', ...Output filename for converting a single dicom volume
     'sort', NaN, ...,Sort the files in Dicom dir into separate series, writing out the series information
     'make_t1', NaN, ...,Make T1 input images from dicom series
@@ -121,6 +123,12 @@ cmd = add_option('int', cmd, '--dyn_series', args.dyn_series);
 cmd = add_option('int', cmd, '--single_series', args.single_series);
 
 cmd = add_option('string', cmd, '--dicom_filter', args.dicom_filter);
+
+cmd = add_option('string', cmd, '--slice_filter_tag', ...
+    args.slice_filter_tag);
+
+cmd = add_option('string', cmd, '--slice_filter_match_value', ...
+    args.slice_filter_match_value);
 
 cmd = add_option('string', cmd, '--vol_name', args.vol_name);
 
