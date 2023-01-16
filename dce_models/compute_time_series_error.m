@@ -71,7 +71,7 @@ t_avg = (t_m1 + t_p1) / 2;
 time_series_error = t_avg - t0;
 
 mse = sum(time_series_error.^2, t_dim) / n_times;
-mae = sum(abs(time_series_error), t_dim) / n_times;
+mae = nanmedian(abs(time_series_error), t_dim);
 
 
 
