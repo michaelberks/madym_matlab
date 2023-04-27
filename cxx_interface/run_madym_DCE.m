@@ -88,12 +88,16 @@ args = u_packargs(varargin, 1, ...
     'aif_name', '',...Path to precomputed AIF if not using population AIF
     'aif_map', '',...Path to to mask from which AIF will be computed on the fly
     'pif_name', '',...Path to precomputed PIF if not deriving from AIF
+    'nifti_scaling', NaN, ... If set, applies intensity scaling and offset when reading/writing NIFTI images
+    'nifti_4D', NaN, ... If set, reads NIFTI 4D images for T1 mapping and dynamic inputs
     'IAUC_times', [],..._times (in s) at which to compute IAUC values
     'IAUC_at_peak', NaN,...Flag requesting IAUC computed at peak signal
     'param_names', [],...Names of model parameters to be optimised, used to name the output parameter maps
     'init_params', [],...Initial values for model parameters to be optimised, either as single vector, or 2D array NSamples x N_params
     'fixed_params', [],...Parameters fixed to their initial values (ie not optimised)
-    'fixed_values', [],..._values for fixed parameters (overrides default initial parameter values)
+    'fixed_values', [],... Values for fixed parameters (overrides default initial parameter values)
+    'repeat_param', NaN,...Index of parameter at which repeat fits will be made
+    'repeat_values', [],... Values for repeat parameter
     'upper_bounds', [],...Upper bounds for each parameter during optimisation
     'lower_bounds', [],...Lower bounds for each parameter during optimisation
     'relative_limit_params', [],...Parameters with relative limits on their optimisation bounds
@@ -243,6 +247,10 @@ cmd = add_option('float_list', cmd, '--iauc', args.IAUC_times);
 
 cmd = add_option('bool', cmd, '--iauc_peak', args.IAUC_at_peak);
 
+cmd = add_option('bool', cmd, '--nifti_scaling', args.nifti_scaling);
+
+cmd = add_option('bool', cmd, '--nifti_4D', args.nifti_4D);
+
 cmd = add_option('string', cmd, '--init_maps', args.init_maps_dir);
 
 cmd = add_option('int_list', cmd, '--init_map_params', args.init_map_params);
@@ -253,6 +261,9 @@ cmd = add_option('string_list', cmd, '--param_names', args.param_names);
 
 cmd = add_option('int_list', cmd, '--fixed_params', args.fixed_params);
 cmd = add_option('float_list', cmd, '--fixed_values', args.fixed_values);
+
+cmd = add_option('int', cmd, '--repeat_param', args.repeat_param);
+cmd = add_option('float_list', cmd, '--repeat_values', args.repeat_values);
 
 cmd = add_option('float_list', cmd, '--upper_bounds', args.upper_bounds);
 cmd = add_option('float_list', cmd, '--lower_bounds', args.lower_bounds);
