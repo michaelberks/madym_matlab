@@ -45,6 +45,9 @@ args = u_packargs(varargin, 1, ...
     'Bvals_thresh', [], ...Thresholds used in IVIM fitting
     'img_fmt_r', '',...Set image read format
     'img_fmt_w', '',...Set image write format
+    'nifti_scaling', NaN, ... If set, applies intensity scaling and offset when reading/writing NIFTI images
+    'nifti_4D', NaN, ... If set, reads NIFTI 4D images for T1 mapping and dynamic inputs
+    'use_BIDS', NaN, ... If set, writes images using BIDS json meta info
     'overwrite', NaN,...Set overwrite existing analysis in output dir
     'no_audit', NaN,... Turn off audit log
     'no_log', NaN,... Turn off propgram log
@@ -76,6 +79,12 @@ cmd = add_option('string', cmd, '--roi', args.roi_name);
 cmd = add_option('string', cmd, '--img_fmt_r', args.img_fmt_r);
 
 cmd = add_option('string', cmd, '--img_fmt_w', args.img_fmt_w);
+
+cmd = add_option('bool', cmd, '--nifti_scaling', args.nifti_scaling);
+
+cmd = add_option('bool', cmd, '--nifti_4D', args.nifti_4D);
+
+cmd = add_option('bool', cmd, '--use_BIDS', args.use_BIDS);
 
 cmd = add_option('string_list', cmd, '--DWI_vols', args.DWI_vols);
         

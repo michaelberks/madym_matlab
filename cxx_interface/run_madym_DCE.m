@@ -90,6 +90,7 @@ args = u_packargs(varargin, 1, ...
     'pif_name', '',...Path to precomputed PIF if not deriving from AIF
     'nifti_scaling', NaN, ... If set, applies intensity scaling and offset when reading/writing NIFTI images
     'nifti_4D', NaN, ... If set, reads NIFTI 4D images for T1 mapping and dynamic inputs
+    'use_BIDS', NaN, ... If set, writes images using BIDS json meta info
     'IAUC_times', [],..._times (in s) at which to compute IAUC values
     'IAUC_at_peak', NaN,...Flag requesting IAUC computed at peak signal
     'param_names', [],...Names of model parameters to be optimised, used to name the output parameter maps
@@ -250,6 +251,8 @@ cmd = add_option('bool', cmd, '--iauc_peak', args.IAUC_at_peak);
 cmd = add_option('bool', cmd, '--nifti_scaling', args.nifti_scaling);
 
 cmd = add_option('bool', cmd, '--nifti_4D', args.nifti_4D);
+
+cmd = add_option('bool', cmd, '--use_BIDS', args.use_BIDS);
 
 cmd = add_option('string', cmd, '--init_maps', args.init_maps_dir);
 

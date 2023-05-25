@@ -46,6 +46,9 @@ args = u_packargs(varargin, 1, ...
     'sequence_step', NaN, ...Step between indexes of filenames in dynamic series
     'n_dyns', NaN, ...Number of dynamic sequence maps to load. If <=0, loads all maps in dynamic dir matching -dyn pattern
     'img_fmt_w', '', ...Image format for writing output
+    'nifti_scaling', NaN, ... If set, applies intensity scaling and offset when reading/writing NIFTI images
+    'nifti_4D', NaN, ... If set, reads NIFTI 4D images for T1 mapping and dynamic inputs
+    'use_BIDS', NaN, ... If set, writes images using BIDS json meta info
     'dicom_dir', '', ...Folder containing DICOM data
     'dicom_series_file', '', ...Filename to/from which dicom series data is written/read
     'T1_input_series', [], ...Indices of the dicom series for each T1 input
@@ -107,6 +110,12 @@ cmd = add_option('int', cmd, '--sequence_step', args.sequence_step);
 cmd = add_option('int', cmd, '--n_dyns', args.n_dyns);
 
 cmd = add_option('string', cmd, '--img_fmt_w', args.img_fmt_w);
+
+cmd = add_option('bool', cmd, '--nifti_scaling', args.nifti_scaling);
+
+cmd = add_option('bool', cmd, '--nifti_4D', args.nifti_4D);
+
+cmd = add_option('bool', cmd, '--use_BIDS', args.use_BIDS);
 
 cmd = add_option('string_list', cmd, '--T1_vols', args.T1_vols);
 
